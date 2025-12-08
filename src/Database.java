@@ -6,13 +6,14 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class Database {
     private final String DB_PATH = "jdbc:sqlite:db.sqlite3";
 
     public Database(List<Clause> clauses) {
 
-        // create clauses table
+        // create the clauses table
         String sql = "CREATE TABLE IF NOT EXISTS clauses (id INTEGER PRIMARY KEY AUTOINCREMENT, clause TEXT, starting_set BOOLEAN DEFAULT FALSE,resolved BOOLEAN DEFAULT FALSE)";
 
         try {
