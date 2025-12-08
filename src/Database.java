@@ -78,12 +78,12 @@ public class Database {
         }
     }
 
-    public ArrayList<Clause> get_clauses(int starting_index, int amount) {
+    public ArrayList<Clause> getClauses(int startingIndex, int amount) {
         try {
             Connection conn = DriverManager.getConnection(DB_PATH);
             Statement stmt = conn.createStatement();
             ResultSet results = stmt
-                    .executeQuery("SELECT clause FROM clauses WHERE id >= " + starting_index + "LIMIT " + amount);
+                    .executeQuery("SELECT clause FROM clauses WHERE id >= " + startingIndex + "LIMIT " + amount);
             ArrayList<Clause> clauses = new ArrayList<>();
 
             while (results.next()) {
@@ -99,7 +99,7 @@ public class Database {
         return null;
     }
 
-    public ArrayList<Clause> get_unresolved_clauses(int amount) {
+    public ArrayList<Clause> getUnresolvedClauses(int amount) {
         try {
             Connection conn = DriverManager.getConnection(DB_PATH);
             Statement stmt = conn.createStatement();
@@ -119,11 +119,11 @@ public class Database {
         }
     }
 
-    public void set_resolved(int[] clause_ids) {
+    public void setResolved(int[] clauseIds) {
         try {
             Connection conn = DriverManager.getConnection(DB_PATH);
             PreparedStatement pstmt = conn.prepareStatement("UPDATE clauses SET resolved = TRUE WHERE id IN (?)");
-            pstmt.setString(1, Arrays.toString(clause_ids));
+            pstmt.setString(1, Arrays.toString(clauseIds));
             pstmt.executeUpdate();
             pstmt.close();
             conn.close();
@@ -132,7 +132,7 @@ public class Database {
         }
     }
 
-    public boolean has_empty_clause() {
+    public boolean hasEmptyClause() {
         try {
             Connection conn = DriverManager.getConnection(DB_PATH);
             Statement stmt = conn.createStatement();

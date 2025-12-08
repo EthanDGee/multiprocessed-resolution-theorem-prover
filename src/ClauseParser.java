@@ -17,16 +17,16 @@ public class ClauseParser {
             if (atomString.isEmpty())
                 continue;
 
-            Atom atom = parseAtom(atomString);
-            if (atom != null) {
-                clause.addAtom(atom);
+            Literal literal = parseAtom(atomString);
+            if (literal != null) {
+                clause.addAtom(literal);
             }
         }
 
         return clause;
     }
 
-    public static Atom parseAtom(String atomString) {
+    public static Literal parseAtom(String atomString) {
         Matcher matcher = ATOM_PATTERN.matcher(atomString.trim());
 
         if (matcher.matches()) {
@@ -34,7 +34,7 @@ public class ClauseParser {
             String predicate = matcher.group(1);
             String argument = matcher.group(2);
 
-            return new Atom(predicate, argument, isPositive);
+            return new Literal(predicate, argument, isPositive);
         }
 
         throw new IllegalArgumentException("Invalid literal format: " + atomString);

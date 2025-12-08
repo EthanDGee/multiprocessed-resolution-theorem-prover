@@ -25,7 +25,7 @@ public class ResolutionTheoremProver {
 
 
             // get unresolved clauses from database
-            ArrayList<Clause> clauseList = database.get_unresolved_clauses(UNRESOLVED_BATCH_SIZE);
+            ArrayList<Clause> clauseList = database.getUnresolvedClauses(UNRESOLVED_BATCH_SIZE);
             Set<Clause> clauseSet = new HashSet<>(clauseList);
             // if there are no clauses left, return true
             if (clauseList.isEmpty()) {
@@ -57,15 +57,15 @@ public class ResolutionTheoremProver {
         }
     }
 
-    private List<Clause> resolve(Clause clause_1, Clause clause_2) {
+    private List<Clause> resolve(Clause clause1, Clause clause2) {
         List<Clause> resolvents = new ArrayList<>();
 
-        for (Atom atom_1 : clause_1.getAtoms()) {
-            for (Atom atom_2 : clause_2.getAtoms()) {
-                if (atom_1.canResolveWith(atom_2)) {
-                    Map<String, String> substitution = unify(atom_1, atom_2);
+        for (Literal literal1 : clause1.getAtoms()) {
+            for (Literal literal2 : clause2.getAtoms()) {
+                if (literal1.canResolveWith(literal2)) {
+                    Map<String, String> substitution = unify(literal1, literal2);
                     if (substitution != null) {
-                        Clause resolvent = createResolvent(clause_1, clause_2, atom_1, atom_2, substitution);
+                        Clause resolvent = createResolvent(clause1, clause2, literal1, literal2, substitution);
                         resolvents.add(resolvent);
                     }
                 }
@@ -75,15 +75,15 @@ public class ResolutionTheoremProver {
         return resolvents;
     }
 
-    private Map<String, String> unify(Atom atom1, Atom atom2) {
-        if (!atom1.getPredicate().equals(atom2.getPredicate())) {
+    private Map<String, String> unify(Literal literal1, Literal literal2) {
+        if (!literal1.getPredicate().equals(literal2.getPredicate())) {
             return null;
         }
 
         Map<String, String> substitution = new HashMap<>();
 
-        String arg1 = atom1.getArgument();
-        String arg2 = atom2.getArgument();
+        String arg1 = literal1.getArgument();
+        String arg2 = literal2.getArgument();
 
         if (arg1.equals(arg2)) {
             return substitution;
@@ -111,20 +111,20 @@ public class ResolutionTheoremProver {
         return term.matches("^[a-z]$");
     }
 
-    private Clause createResolvent(Clause clause1, Clause clause2, Atom atom1, Atom atom2,
-            Map<String, String> substitution) {
+    private Clause createResolvent(Clause clause1, Clause clause2, Literal literal1, Literal literal2,
+                                   Map<String, String> substitution) {
         Clause resolvent = new Clause();
 
-        for (Atom atom : clause1.getAtoms()) {
-            if (!atom.equals(atom1)) {
-                Atom newAtom = applySubstitution(atom, substitution);
-                resolvent.addAtom(newAtom);
+        for (Literal literal : clause1.getAtoms()) {
+            if (!literal.equals(literal1)) {
+                Literal newLiteral = applySubstitution(literal, substitution);
+                resolvent.addAtom(newLiteral);
             }
         }
 
-        for (Atom atom : clause2.getAtoms()) {
-            if (!atom.equals(atom2)) {
-                Atom newLit = applySubstitution(atom, substitution);
+        for (Literal literal : clause2.getAtoms()) {
+            if (!literal.equals(literal2)) {
+                Literal newLit = applySubstitution(literal, substitution);
                 resolvent.addAtom(newLit);
             }
         }
@@ -132,9 +132,9 @@ public class ResolutionTheoremProver {
         return resolvent;
     }
 
-    private Atom applySubstitution(Atom atom, Map<String, String> substitution) {
-        String newArg = substitution.getOrDefault(atom.getArgument(), atom.getArgument());
-        return new Atom(atom.getPredicate(), newArg, atom.isPositive());
+    private Literal applySubstitution(Literal literal, Map<String, String> substitution) {
+        String newArg = substitution.getOrDefault(literal.getArgument(), literal.getArgument());
+        return new Literal(literal.getPredicate(), newArg, literal.isPositive());
     }
 
     public static void main(String[] args) {
@@ -144,20 +144,20 @@ public class ResolutionTheoremProver {
 
         // P(x) => Q(x) becomes ¬P(x) ∨ Q(x)
         Clause clause1 = new Clause();
-        clause1.addAtom(new Atom("P", "x", false));
-        clause1.addAtom(new Atom("Q", "x", true));
+        clause1.addAtom(new Literal("P", "x", false));
+        clause1.addAtom(new Literal("Q", "x", true));
         clauses.add(clause1);
 
         // P(a)
         Clause clause2 = new Clause();
-        clause2.addAtom(new Atom("P", "a", true));
+        clause2.addAtom(new Literal("P", "a", true));
         clauses.add(clause2);
 
         ResolutionTheoremProver prover = new ResolutionTheoremProver(clauses);
 
         // Negation of conclusion: ¬Q(a)
         Clause negatedConclusion = new Clause();
-        negatedConclusion.addAtom(new Atom("Q", "a", false));
+        negatedConclusion.addAtom(new Literal("Q", "a", false));
 
 
         System.out.println("Attempting to prove: From P(x)=>Q(x) and P(a), derive Q(a)");

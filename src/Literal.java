@@ -1,14 +1,16 @@
 import java.util.Objects;
 
-public class Atom {
+public class Literal {
 
     private static final char NEGATIVE_SYMBOL = '¬';
 
-    private String predicate;
-    private String argument;
-    private boolean positive;
+    private final String predicate;
 
-    public Atom(String predicate, String argument, boolean positive) {
+
+    private final String argument;
+    private final boolean positive;
+
+    public Literal(String predicate, String argument, boolean positive) {
 
         this.predicate = predicate;
         this.argument = argument;
@@ -31,13 +33,13 @@ public class Atom {
         return !positive;
     }
 
-    public boolean canResolveWith(Atom other) {
+    public boolean canResolveWith(Literal other) {
         return this.predicate.equals(other.predicate) &&
                 this.positive != other.positive;
     }
 
-    public Atom negate() {
-        return new Atom(predicate, argument, !positive);
+    public Literal negate() {
+        return new Literal(predicate, argument, !positive);
     }
 
     @Override
@@ -46,7 +48,7 @@ public class Atom {
             return true;
         if (obj == null || getClass() != obj.getClass())
             return false;
-        Atom other = (Atom) obj;
+        Literal other = (Literal) obj;
         return positive == other.positive &&
                 Objects.equals(predicate, other.predicate) &&
                 Objects.equals(argument, other.argument);
@@ -63,7 +65,7 @@ public class Atom {
 
     }
 
-    public Atom copy() {
-        return new Atom(predicate, argument, positive);
+    public Literal copy() {
+        return new Literal(predicate, argument, positive);
     }
 }

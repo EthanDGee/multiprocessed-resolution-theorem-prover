@@ -6,34 +6,34 @@ import java.util.ArrayList;
 import java.util.Collections;
 
 public class Clause {
-    private Set<Atom> atoms;
+    private Set<Literal> literals;
 
     public Clause() {
-        this.atoms = new HashSet<>();
+        this.literals = new HashSet<>();
     }
 
-    public Clause(Set<Atom> atoms) {
-        this.atoms = new HashSet<>(atoms);
+    public Clause(Set<Literal> literals) {
+        this.literals = new HashSet<>(literals);
     }
 
-    public void addAtom(Atom atom) {
-        atoms.add(atom);
+    public void addAtom(Literal literal) {
+        literals.add(literal);
     }
 
-    public Set<Atom> getAtoms() {
-        return new HashSet<>(this.atoms);
+    public Set<Literal> getAtoms() {
+        return new HashSet<>(this.literals);
     }
 
     public boolean isEmpty() {
-        return this.atoms.isEmpty();
+        return this.literals.isEmpty();
     }
 
-    public boolean contains(Atom atom) {
-        return this.atoms.contains(atom);
+    public boolean contains(Literal literal) {
+        return this.literals.contains(literal);
     }
 
     public int size() {
-        return this.atoms.size();
+        return this.literals.size();
     }
 
     @Override
@@ -43,18 +43,18 @@ public class Clause {
         if (obj == null || getClass() != obj.getClass())
             return false;
         Clause other = (Clause) obj;
-        return Objects.equals(this.atoms, other.atoms);
+        return Objects.equals(this.literals, other.literals);
     }
 
     @Override
     public String toString() {
-        if (this.atoms.isEmpty()) {
+        if (this.literals.isEmpty()) {
             return "nil";
         }
 
         List<String> atomStrings = new ArrayList<>();
-        for (Atom atom : this.atoms) {
-            atomStrings.add(atom.toString());
+        for (Literal literal : this.literals) {
+            atomStrings.add(literal.toString());
         }
 
         Collections.sort(atomStrings);
@@ -62,6 +62,6 @@ public class Clause {
     }
 
     public Clause copy() {
-        return new Clause(this.atoms);
+        return new Clause(this.literals);
     }
 }
