@@ -43,7 +43,7 @@ public class Clause {
         if (obj == null || getClass() != obj.getClass())
             return false;
         Clause other = (Clause) obj;
-        return Objects.equals(this.literals, other.literals);
+        return Objects.equals(this.toString(), other.toString());
     }
 
     @Override
