@@ -6,7 +6,6 @@ public class Literal {
 
     private final String predicate;
 
-
     private final String argument;
     private final boolean positive;
 
@@ -40,6 +39,11 @@ public class Literal {
 
     public Literal negate() {
         return new Literal(predicate, argument, !positive);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.argument, this.predicate, this.positive);
     }
 
     @Override
