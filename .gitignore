@@ -1,8 +1,16 @@
+### Maven ###
+target/
+lib/
+
+### SQLite3 ###
+db.sqlite3
+
 ### IntelliJ IDEA ###
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
 .kotlin
+.idea/
 
 ### Eclipse ###
 .apt_generated
