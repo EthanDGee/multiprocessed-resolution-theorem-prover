@@ -4,7 +4,7 @@ import java.util.regex.*;
 public class ClauseParser {
 
     private static final String NEGATIVE_SYMBOL = "¬";
-    private static final Pattern ATOM_PATTERN = Pattern.compile(NEGATIVE_SYMBOL + "?([A-Z][a-zA-Z]*)\\(([a-zA-Z])\\)");
+    private static final Pattern LITERAL_PATTERN = Pattern.compile(NEGATIVE_SYMBOL + "?([a-zA-Z0-9]+)\\(([a-zA-Z0-9]+)\\)");
     private static final Pattern CLAUSE_PATTERN = Pattern.compile("\\s*∨\\s*|\\s*\\|\\s*|\\s*,\\s*");
 
     public static Clause parseClause(String clauseString) {
@@ -17,17 +17,17 @@ public class ClauseParser {
             if (atomString.isEmpty())
                 continue;
 
-            Literal literal = parseAtom(atomString);
+            Literal literal = parseLiteral(atomString);
             if (literal != null) {
-                clause.addAtom(literal);
+                clause.addLiteral(literal);
             }
         }
 
         return clause;
     }
 
-    public static Literal parseAtom(String atomString) {
-        Matcher matcher = ATOM_PATTERN.matcher(atomString.trim());
+    public static Literal parseLiteral(String atomString) {
+        Matcher matcher = LITERAL_PATTERN.matcher(atomString.trim());
 
         if (matcher.matches()) {
             boolean isPositive = !atomString.startsWith(NEGATIVE_SYMBOL);

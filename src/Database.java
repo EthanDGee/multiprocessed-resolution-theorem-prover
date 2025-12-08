@@ -15,7 +15,7 @@ public class Database {
 
         // create the clauses table
         String sql = "CREATE TABLE IF NOT EXISTS clauses (id INTEGER PRIMARY KEY AUTOINCREMENT, clause TEXT, starting_set BOOLEAN DEFAULT FALSE,resolved BOOLEAN DEFAULT FALSE)";
-
+        clearClauses();
         try {
             Connection conn = DriverManager.getConnection(DB_PATH);
             Statement stmt = conn.createStatement();
@@ -119,11 +119,16 @@ public class Database {
         }
     }
 
-    public void setResolved(int[] clauseIds) {
+    public void setResolved(List<Clause> clauses) {
+
+        String[] clauseStrings = new String[clauses.size()];
+        for (int i = 0; i < clauses.size(); i++) {
+            clauseStrings[i] = clauses.get(i).toString();
+        }
         try {
             Connection conn = DriverManager.getConnection(DB_PATH);
-            PreparedStatement pstmt = conn.prepareStatement("UPDATE clauses SET resolved = TRUE WHERE id IN (?)");
-            pstmt.setString(1, Arrays.toString(clauseIds));
+            PreparedStatement pstmt = conn.prepareStatement("UPDATE clauses SET resolved = TRUE WHERE clause IN (?)");
+            pstmt.setString(1, Arrays.toString(clauseStrings));
             pstmt.executeUpdate();
             pstmt.close();
             conn.close();
@@ -156,6 +161,19 @@ public class Database {
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
+    }
+
+    private void clearClauses(){
+        try {
+            Connection conn = DriverManager.getConnection(DB_PATH);
+            Statement stmt = conn.createStatement();
+            stmt.executeUpdate("DELETE FROM clauses");
+            stmt.close();
+            conn.close();
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+
     }
 }
 

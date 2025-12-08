@@ -10,10 +10,9 @@ public class ResolutionTheoremProver {
     private final int UNRESOLVED_BATCH_SIZE = 1000;
     private Database database;
 
-    public ResolutionTheoremProver(List<Clause> clauses){
+    public ResolutionTheoremProver(List<Clause> clauses) {
         this.database = new Database(clauses);
     }
-
 
     public boolean prove(Clause negativeCase) {
         database.flushResolvents(); // clear resolvents from previous runs
@@ -51,7 +50,7 @@ public class ResolutionTheoremProver {
                     }
                 }
             }
-
+            database.setResolved(clauseList);
             database.addClauses(newClauses);
 
         }
@@ -60,8 +59,8 @@ public class ResolutionTheoremProver {
     private List<Clause> resolve(Clause clause1, Clause clause2) {
         List<Clause> resolvents = new ArrayList<>();
 
-        for (Literal literal1 : clause1.getAtoms()) {
-            for (Literal literal2 : clause2.getAtoms()) {
+        for (Literal literal1 : clause1.getLiterals()) {
+            for (Literal literal2 : clause2.getLiterals()) {
                 if (literal1.canResolveWith(literal2)) {
                     Map<String, String> substitution = unify(literal1, literal2);
                     if (substitution != null) {
@@ -115,17 +114,17 @@ public class ResolutionTheoremProver {
                                    Map<String, String> substitution) {
         Clause resolvent = new Clause();
 
-        for (Literal literal : clause1.getAtoms()) {
+        for (Literal literal : clause1.getLiterals()) {
             if (!literal.equals(literal1)) {
                 Literal newLiteral = applySubstitution(literal, substitution);
-                resolvent.addAtom(newLiteral);
+                resolvent.addLiteral(newLiteral);
             }
         }
 
-        for (Literal literal : clause2.getAtoms()) {
+        for (Literal literal : clause2.getLiterals()) {
             if (!literal.equals(literal2)) {
                 Literal newLit = applySubstitution(literal, substitution);
-                resolvent.addAtom(newLit);
+                resolvent.addLiteral(newLit);
             }
         }
 
@@ -144,20 +143,20 @@ public class ResolutionTheoremProver {
 
         // P(x) => Q(x) becomes ¬P(x) ∨ Q(x)
         Clause clause1 = new Clause();
-        clause1.addAtom(new Literal("P", "x", false));
-        clause1.addAtom(new Literal("Q", "x", true));
+        clause1.addLiteral(new Literal("P", "x", false));
+        clause1.addLiteral(new Literal("Q", "x", true));
         clauses.add(clause1);
 
         // P(a)
         Clause clause2 = new Clause();
-        clause2.addAtom(new Literal("P", "a", true));
+        clause2.addLiteral(new Literal("P", "a", true));
         clauses.add(clause2);
 
         ResolutionTheoremProver prover = new ResolutionTheoremProver(clauses);
 
         // Negation of conclusion: ¬Q(a)
         Clause negatedConclusion = new Clause();
-        negatedConclusion.addAtom(new Literal("Q", "a", false));
+        negatedConclusion.addLiteral(new Literal("Q", "a", false));
 
 
         System.out.println("Attempting to prove: From P(x)=>Q(x) and P(a), derive Q(a)");

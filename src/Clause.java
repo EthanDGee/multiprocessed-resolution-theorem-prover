@@ -16,11 +16,11 @@ public class Clause {
         this.literals = new HashSet<>(literals);
     }
 
-    public void addAtom(Literal literal) {
+    public void addLiteral(Literal literal) {
         literals.add(literal);
     }
 
-    public Set<Literal> getAtoms() {
+    public Set<Literal> getLiterals() {
         return new HashSet<>(this.literals);
     }
 
