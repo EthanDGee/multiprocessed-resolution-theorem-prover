@@ -1,9 +1,6 @@
 import java.util.Objects;
 
 public class Literal {
-
-    private static final char NEGATIVE_SYMBOL = '¬';
-
     private final String predicate;
 
     private final String argument;
@@ -63,7 +60,7 @@ public class Literal {
         String result = predicate + "(" + argument + ")";
 
         if (!this.positive)
-            result = NEGATIVE_SYMBOL + result;
+            result = Constants.NEGATIVE_SYMBOL + result;
 
         return result;
 

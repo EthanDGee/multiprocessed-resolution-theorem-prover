@@ -1,5 +1,5 @@
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 
 public class ResolutionExample {
     public static void main(String[] args) {
@@ -8,182 +8,180 @@ public class ResolutionExample {
         runLargeExample();
     }
 
-public static void runSimpleExample() {
-    System.out.println("--- Running Simple Example ---");
-    List<Clause> clauses = new ArrayList<>();
+    public static void runSimpleExample() {
+        System.out.println("--- Running Simple Example ---");
+        List<Clause> clauses = new ArrayList<>();
 
-    // Man(Socrates)
-    Clause clause1 = new Clause();
-    clause1.addLiteral(new Literal("Man", "Socrates", true));
-    clauses.add(clause1);
+        // Man(Socrates)
+        Clause clause1 = new Clause();
+        clause1.addLiteral(new Literal("Man", "Socrates", true));
+        clauses.add(clause1);
 
-    // Man(x) -> Mortal(x)  ===  ¬Man(x) ∨ Mortal(x)
-    Clause clause2 = new Clause();
-    clause2.addLiteral(new Literal("Man", "x", false));
-    clause2.addLiteral(new Literal("Mortal", "x", true));
-    clauses.add(clause2);
+        // Man(x) -> Mortal(x) === ¬Man(x) ∨ Mortal(x)
+        Clause clause2 = new Clause();
+        clause2.addLiteral(new Literal("Man", "x", false));
+        clause2.addLiteral(new Literal("Mortal", "x", true));
+        clauses.add(clause2);
 
-    ResolutionTheoremProver prover = new ResolutionTheoremProver(clauses);
+        ResolutionTheoremProver prover = new ResolutionTheoremProver(clauses);
 
-    // Negation of conclusion: ¬Mortal(Socrates)
-    Clause negatedConclusion = new Clause();
-    negatedConclusion.addLiteral(new Literal("Mortal", "Socrates", false));
+        // Negation of conclusion: ¬Mortal(Socrates)
+        Clause negatedConclusion = new Clause();
+        negatedConclusion.addLiteral(new Literal("Mortal", "Socrates", false));
 
-    System.out.println("Attempting to prove: Mortal(Socrates)");
-    System.out.println("Clauses:");
-    for (int i = 0; i < clauses.size(); i++) {
-        System.out.println("  " + (i + 1) + ": " + clauses.get(i));
+        System.out.println("Attempting to prove: Mortal(Socrates)");
+        System.out.println("Clauses:");
+        for (int i = 0; i < clauses.size(); i++) {
+            System.out.println("  " + (i + 1) + ": " + clauses.get(i));
+        }
+        System.out.println("Negated Conclusion: " + negatedConclusion);
+
+        boolean result = prover.prove(negatedConclusion);
+        System.out.println("\nProof " + (result ? "succeeded" : "failed"));
+        System.out.println("----------------------------\n");
     }
-    System.out.println("Negated Conclusion: " + negatedConclusion);
 
+    public static void runModerateExample() {
+        System.out.println("--- Running Moderate Example (12 clauses) ---");
+        List<Clause> clauses = new ArrayList<>();
 
-    boolean result = prover.prove(negatedConclusion);
-    System.out.println("\nProof " + (result ? "succeeded" : "failed"));
-    System.out.println("----------------------------\n");
-}
+        // 1. PassesExams(x) -> Happy(x) === ¬PassesExams(x) v Happy(x)
+        Clause c1 = new Clause();
+        c1.addLiteral(new Literal("PassesExams", "x", false));
+        c1.addLiteral(new Literal("Happy", "x", true));
+        clauses.add(c1);
 
-public static void runModerateExample() {
-    System.out.println("--- Running Moderate Example (12 clauses) ---");
-    List<Clause> clauses = new ArrayList<>();
+        // 2. Studies(x) -> PassesExams(x) === ¬Studies(x) v PassesExams(x)
+        Clause c2 = new Clause();
+        c2.addLiteral(new Literal("Studies", "x", false));
+        c2.addLiteral(new Literal("PassesExams", "x", true));
+        clauses.add(c2);
 
-    // 1. PassesExams(x) -> Happy(x)  === ¬PassesExams(x) v Happy(x)
-    Clause c1 = new Clause();
-    c1.addLiteral(new Literal("PassesExams", "x", false));
-    c1.addLiteral(new Literal("Happy", "x", true));
-    clauses.add(c1);
+        // 3. ¬Sleepy(x) -> Studies(x) === Sleepy(x) v Studies(x)
+        Clause c3 = new Clause();
+        c3.addLiteral(new Literal("Sleepy", "x", true));
+        c3.addLiteral(new Literal("Studies", "x", true));
+        clauses.add(c3);
 
-    // 2. Studies(x) -> PassesExams(x) === ¬Studies(x) v PassesExams(x)
-    Clause c2 = new Clause();
-    c2.addLiteral(new Literal("Studies", "x", false));
-    c2.addLiteral(new Literal("PassesExams", "x", true));
-    clauses.add(c2);
+        // 4. DrinksCoffee(x) -> ¬Sleepy(x) === ¬DrinksCoffee(x) v ¬Sleepy(x)
+        Clause c4 = new Clause();
+        c4.addLiteral(new Literal("DrinksCoffee", "x", false));
+        c4.addLiteral(new Literal("Sleepy", "x", false));
+        clauses.add(c4);
 
-    // 3. ¬Sleepy(x) -> Studies(x)  === Sleepy(x) v Studies(x)
-    Clause c3 = new Clause();
-    c3.addLiteral(new Literal("Sleepy", "x", true));
-    c3.addLiteral(new Literal("Studies", "x", true));
-    clauses.add(c3);
+        // 5. DrinksCoffee(Jack)
+        Clause c5 = new Clause();
+        c5.addLiteral(new Literal("DrinksCoffee", "Jack", true));
+        clauses.add(c5);
 
-    // 4. DrinksCoffee(x) -> ¬Sleepy(x) === ¬DrinksCoffee(x) v ¬Sleepy(x)
-    Clause c4 = new Clause();
-    c4.addLiteral(new Literal("DrinksCoffee", "x", false));
-    c4.addLiteral(new Literal("Sleepy", "x", false));
-    clauses.add(c4);
+        // 6. LikesSubject(x) -> Motivated(x) === ¬LikesSubject(x) v Motivated(x)
+        Clause c6 = new Clause();
+        c6.addLiteral(new Literal("LikesSubject", "x", false));
+        c6.addLiteral(new Literal("Motivated", "x", true));
+        clauses.add(c6);
 
-    // 5. DrinksCoffee(Jack)
-    Clause c5 = new Clause();
-    c5.addLiteral(new Literal("DrinksCoffee", "Jack", true));
-    clauses.add(c5);
+        // 7. Motivated(x) -> Studies(x) === ¬Motivated(x) v Studies(x)
+        Clause c7 = new Clause();
+        c7.addLiteral(new Literal("Motivated", "x", false));
+        c7.addLiteral(new Literal("Studies", "x", true));
+        clauses.add(c7);
 
-    // 6. LikesSubject(x) -> Motivated(x) === ¬LikesSubject(x) v Motivated(x)
-    Clause c6 = new Clause();
-    c6.addLiteral(new Literal("LikesSubject", "x", false));
-    c6.addLiteral(new Literal("Motivated", "x", true));
-    clauses.add(c6);
+        // 8. LikesSubject(Jack)
+        Clause c8 = new Clause();
+        c8.addLiteral(new Literal("LikesSubject", "Jack", true));
+        clauses.add(c8);
 
-    // 7. Motivated(x) -> Studies(x) === ¬Motivated(x) v Studies(x)
-    Clause c7 = new Clause();
-    c7.addLiteral(new Literal("Motivated", "x", false));
-    c7.addLiteral(new Literal("Studies", "x", true));
-    clauses.add(c7);
+        // 9. PassesExams(x) -> GoodGrade(x) === ¬PassesExams(x) v GoodGrade(x)
+        Clause c9 = new Clause();
+        c9.addLiteral(new Literal("PassesExams", "x", false));
+        c9.addLiteral(new Literal("GoodGrade", "x", true));
+        clauses.add(c9);
 
-    // 8. LikesSubject(Jack)
-    Clause c8 = new Clause();
-    c8.addLiteral(new Literal("LikesSubject", "Jack", true));
-    clauses.add(c8);
+        // 10. GoodGrade(x) -> Celebrates(x) === ¬GoodGrade(x) v Celebrates(x)
+        Clause c10 = new Clause();
+        c10.addLiteral(new Literal("GoodGrade", "x", false));
+        c10.addLiteral(new Literal("Celebrates", "x", true));
+        clauses.add(c10);
 
-    // 9. PassesExams(x) -> GoodGrade(x) === ¬PassesExams(x) v GoodGrade(x)
-    Clause c9 = new Clause();
-    c9.addLiteral(new Literal("PassesExams", "x", false));
-    c9.addLiteral(new Literal("GoodGrade", "x", true));
-    clauses.add(c9);
+        // 11. Celebrates(x) -> Happy(x) === ¬Celebrates(x) v Happy(x)
+        Clause c11 = new Clause();
+        c11.addLiteral(new Literal("Celebrates", "x", false));
+        c11.addLiteral(new Literal("Happy", "x", true));
+        clauses.add(c11);
 
-    // 10. GoodGrade(x) -> Celebrates(x) === ¬GoodGrade(x) v Celebrates(x)
-    Clause c10 = new Clause();
-    c10.addLiteral(new Literal("GoodGrade", "x", false));
-    c10.addLiteral(new Literal("Celebrates", "x", true));
-    clauses.add(c10);
+        // 12. Happy(x) -> HasFun(x) === ¬Happy(x) v HasFun(x)
+        Clause c12 = new Clause();
+        c12.addLiteral(new Literal("Happy", "x", false));
+        c12.addLiteral(new Literal("HasFun", "x", true));
+        clauses.add(c12);
 
-    // 11. Celebrates(x) -> Happy(x) === ¬Celebrates(x) v Happy(x)
-    Clause c11 = new Clause();
-    c11.addLiteral(new Literal("Celebrates", "x", false));
-    c11.addLiteral(new Literal("Happy", "x", true));
-    clauses.add(c11);
+        ResolutionTheoremProver prover = new ResolutionTheoremProver(clauses);
 
-    // 12. Happy(x) -> HasFun(x) === ¬Happy(x) v HasFun(x)
-    Clause c12 = new Clause();
-    c12.addLiteral(new Literal("Happy", "x", false));
-    c12.addLiteral(new Literal("HasFun", "x", true));
-    clauses.add(c12);
+        // Negation of conclusion: ¬Happy(Jack)
+        Clause negatedConclusion = new Clause();
+        negatedConclusion.addLiteral(new Literal("Happy", "Jack", false));
 
-    ResolutionTheoremProver prover = new ResolutionTheoremProver(clauses);
+        System.out.println("Attempting to prove: Happy(Jack)");
+        System.out.println("Negated Conclusion: " + negatedConclusion);
 
-    // Negation of conclusion: ¬Happy(Jack)
-    Clause negatedConclusion = new Clause();
-    negatedConclusion.addLiteral(new Literal("Happy", "Jack", false));
-
-    System.out.println("Attempting to prove: Happy(Jack)");
-    System.out.println("Negated Conclusion: " + negatedConclusion);
-
-    boolean result = prover.prove(negatedConclusion);
-    System.out.println("\nProof " + (result ? "succeeded" : "failed"));
-    System.out.println("-------------------------------------------\n");
-}
-
-public static void runLargeExample() {
-    System.out.println("--- Running Large Example (80 clauses) ---");
-    List<Clause> clauses = new ArrayList<>();
-
-    // Main chain: P1(x) -> P2(x) -> ... -> P50(x)
-    for (int i = 1; i < 50; i++) {
-        Clause clause = new Clause();
-        clause.addLiteral(new Literal("P" + i, "x", false));
-        clause.addLiteral(new Literal("P" + (i + 1), "x", true));
-        clauses.add(clause);
+        boolean result = prover.prove(negatedConclusion);
+        System.out.println("\nProof " + (result ? "succeeded" : "failed"));
+        System.out.println("-------------------------------------------\n");
     }
-    Clause p1 = new Clause();
-    p1.addLiteral(new Literal("P1", "BigTest", true));
-    clauses.add(p1);
 
-    // Distractor chain 1: Q1(x) -> ... -> Q10(x)
-    for (int i = 1; i < 10; i++) {
-        Clause clause = new Clause();
-        clause.addLiteral(new Literal("Q" + i, "x", false));
-        clause.addLiteral(new Literal("Q" + (i + 1), "x", true));
-        clauses.add(clause);
+    public static void runLargeExample() {
+        System.out.println("--- Running Large Example (80 clauses) ---");
+        List<Clause> clauses = new ArrayList<>();
+
+        // Main chain: P1(x) -> P2(x) -> ... -> P50(x)
+        for (int i = 1; i < 50; i++) {
+            Clause clause = new Clause();
+            clause.addLiteral(new Literal("P" + i, "x", false));
+            clause.addLiteral(new Literal("P" + (i + 1), "x", true));
+            clauses.add(clause);
+        }
+        Clause p1 = new Clause();
+        p1.addLiteral(new Literal("P1", "BigTest", true));
+        clauses.add(p1);
+
+        // Distractor chain 1: Q1(x) -> ... -> Q10(x)
+        for (int i = 1; i < 10; i++) {
+            Clause clause = new Clause();
+            clause.addLiteral(new Literal("Q" + i, "x", false));
+            clause.addLiteral(new Literal("Q" + (i + 1), "x", true));
+            clauses.add(clause);
+        }
+        Clause q1 = new Clause();
+        q1.addLiteral(new Literal("Q1", "BigTest", true));
+        clauses.add(q1);
+
+        // Distractor chain 2: R1(x) -> ... -> R20(x)
+        for (int i = 1; i < 20; i++) {
+            Clause clause = new Clause();
+            clause.addLiteral(new Literal("R" + i, "x", false));
+            clause.addLiteral(new Literal("R" + (i + 1), "x", true));
+            clauses.add(clause);
+        }
+        Clause r1 = new Clause();
+        r1.addLiteral(new Literal("R1", "BigTest", true));
+        clauses.add(r1);
+
+        ResolutionTheoremProver prover = new ResolutionTheoremProver(clauses);
+
+        // Negation of conclusion: ¬P50(BigTest)
+        Clause negatedConclusion = new Clause();
+        negatedConclusion.addLiteral(new Literal("P50", "BigTest", false));
+
+        System.out.println("Attempting to prove: P50(BigTest)");
+        System.out.println("Total clauses in KB: " + clauses.size());
+        System.out.println("Negated Conclusion: " + negatedConclusion);
+
+        boolean result = prover.prove(negatedConclusion);
+        System.out.println("\nProof " + (result ? "succeeded" : "failed"));
+        System.out.println("----------------------------------------\n");
     }
-    Clause q1 = new Clause();
-    q1.addLiteral(new Literal("Q1", "BigTest", true));
-    clauses.add(q1);
 
-    // Distractor chain 2: R1(x) -> ... -> R20(x)
-    for (int i = 1; i < 20; i++) {
-        Clause clause = new Clause();
-        clause.addLiteral(new Literal("R" + i, "x", false));
-        clause.addLiteral(new Literal("R" + (i + 1), "x", true));
-        clauses.add(clause);
+    public static void runMassiveExample() {
+        // Implementation needed
     }
-    Clause r1 = new Clause();
-    r1.addLiteral(new Literal("R1", "BigTest", true));
-    clauses.add(r1);
-
-
-    ResolutionTheoremProver prover = new ResolutionTheoremProver(clauses);
-
-    // Negation of conclusion: ¬P50(BigTest)
-    Clause negatedConclusion = new Clause();
-    negatedConclusion.addLiteral(new Literal("P50", "BigTest", false));
-
-    System.out.println("Attempting to prove: P50(BigTest)");
-    System.out.println("Total clauses in KB: " + clauses.size());
-    System.out.println("Negated Conclusion: " + negatedConclusion);
-
-    boolean result = prover.prove(negatedConclusion);
-    System.out.println("\nProof " + (result ? "succeeded" : "failed"));
-    System.out.println("----------------------------------------\n");
-}
-
-public static void runMassiveExample() {
-    // Implementation needed
-}
 }

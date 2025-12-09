@@ -3,8 +3,8 @@ import java.util.regex.*;
 
 public class ClauseParser {
 
-    private static final String NEGATIVE_SYMBOL = "¬";
-    private static final Pattern LITERAL_PATTERN = Pattern.compile(NEGATIVE_SYMBOL + "?([a-zA-Z0-9]+)\\(([a-zA-Z0-9]+)\\)");
+    private static final Pattern LITERAL_PATTERN = Pattern
+            .compile(Constants.NEGATIVE_SYMBOL + "?([a-zA-Z0-9]+)\\(([a-zA-Z0-9]+)\\)");
     private static final Pattern CLAUSE_PATTERN = Pattern.compile("\\s*∨\\s*|\\s*\\|\\s*|\\s*,\\s*");
 
     public static Clause parseClause(String clauseString) {
@@ -30,7 +30,7 @@ public class ClauseParser {
         Matcher matcher = LITERAL_PATTERN.matcher(atomString.trim());
 
         if (matcher.matches()) {
-            boolean isPositive = !atomString.startsWith(NEGATIVE_SYMBOL);
+            boolean isPositive = !atomString.startsWith(Character.toString(Constants.NEGATIVE_SYMBOL));
             String predicate = matcher.group(1);
             String argument = matcher.group(2);
 
