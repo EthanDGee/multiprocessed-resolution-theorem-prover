@@ -54,7 +54,7 @@ public class ResolutionTheoremProver {
         }
     }
 
-    private List<Clause> resolve(Clause clause1, Clause clause2) {
+    public static List<Clause> resolve(Clause clause1, Clause clause2) {
         List<Clause> resolvents = new ArrayList<>();
 
         for (Literal literal1 : clause1.getLiterals()) {
@@ -72,7 +72,7 @@ public class ResolutionTheoremProver {
         return resolvents;
     }
 
-    private Map<String, String> unify(Literal literal1, Literal literal2) {
+    private static Map<String, String> unify(Literal literal1, Literal literal2) {
         if (!literal1.getPredicate().equals(literal2.getPredicate())) {
             return null;
         }
@@ -104,11 +104,11 @@ public class ResolutionTheoremProver {
         return null;
     }
 
-    private boolean isVariable(String term) {
+    private static boolean isVariable(String term) {
         return term.matches("^[a-z]$");
     }
 
-    private Clause createResolvent(Clause clause1, Clause clause2, Literal literal1, Literal literal2,
+    private static Clause createResolvent(Clause clause1, Clause clause2, Literal literal1, Literal literal2,
             Map<String, String> substitution) {
         Clause resolvent = new Clause();
 
@@ -129,7 +129,7 @@ public class ResolutionTheoremProver {
         return resolvent;
     }
 
-    private Literal applySubstitution(Literal literal, Map<String, String> substitution) {
+    private static Literal applySubstitution(Literal literal, Map<String, String> substitution) {
         String newArg = substitution.getOrDefault(literal.getArgument(), literal.getArgument());
         return new Literal(literal.getPredicate(), newArg, literal.isPositive());
     }
