@@ -7,8 +7,7 @@ import java.util.HashMap;
 
 public class ResolutionTheoremProver {
 
-    private final int UNRESOLVED_BATCH_SIZE = 1000;
-    private Database database;
+    private final Database database;
 
     public ResolutionTheoremProver(List<Clause> clauses) {
         this.database = new Database(clauses);
@@ -22,9 +21,8 @@ public class ResolutionTheoremProver {
         while (true) {
             ArrayList<Clause> newClauses = new ArrayList<>();
 
-
             // get unresolved clauses from database
-            ArrayList<Clause> clauseList = database.getUnresolvedClauses(UNRESOLVED_BATCH_SIZE);
+            ArrayList<Clause> clauseList = database.getUnresolvedClauses(Constants.UNRESOLVED_BATCH_SIZE);
             Set<Clause> clauseSet = new HashSet<>(clauseList);
             // if there are no clauses left, return true
             if (clauseList.isEmpty()) {
@@ -111,7 +109,7 @@ public class ResolutionTheoremProver {
     }
 
     private Clause createResolvent(Clause clause1, Clause clause2, Literal literal1, Literal literal2,
-                                   Map<String, String> substitution) {
+            Map<String, String> substitution) {
         Clause resolvent = new Clause();
 
         for (Literal literal : clause1.getLiterals()) {
@@ -157,7 +155,6 @@ public class ResolutionTheoremProver {
         // Negation of conclusion: ¬Q(a)
         Clause negatedConclusion = new Clause();
         negatedConclusion.addLiteral(new Literal("Q", "a", false));
-
 
         System.out.println("Attempting to prove: From P(x)=>Q(x) and P(a), derive Q(a)");
         System.out.println("Clauses:");
