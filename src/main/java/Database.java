@@ -37,7 +37,7 @@ public class Database {
             System.out.println(e.getMessage());
         }
 
-        //fill clauses table with clauses
+        // fill clauses table with clauses
         String[] clauseStrings = new String[clauses.size()];
         for (int i = 0; i < clauses.size(); i++) {
             clauseStrings[i] = clauses.get(i).toString();
@@ -94,14 +94,16 @@ public class Database {
     public ArrayList<Clause> getClauses(int startingIndex, int amount) {
         try {
             Connection conn = DriverManager.getConnection(DB_PATH);
-            PreparedStatement pstmt = conn.prepareStatement("SELECT clause FROM clauses WHERE id >= ? LIMIT ?");
+            PreparedStatement pstmt = conn.prepareStatement("SELECT id, clause FROM clauses WHERE id >= ? LIMIT ?");
             pstmt.setInt(1, startingIndex);
             pstmt.setInt(2, amount);
             ResultSet results = pstmt.executeQuery();
             ArrayList<Clause> clauses = new ArrayList<>();
 
             while (results.next()) {
-                clauses.add(ClauseParser.parseClause(results.getString("clause")));
+                Clause new_clause = ClauseParser.parseClause(results.getString("clause"));
+                new_clause.setId(results.getInt("id"));
+                clauses.add(new_clause);
             }
             pstmt.close();
             conn.close();
@@ -116,12 +118,15 @@ public class Database {
     public ArrayList<Clause> getUnresolvedClauses(int amount) {
         try {
             Connection conn = DriverManager.getConnection(DB_PATH);
-            PreparedStatement pstmt = conn.prepareStatement("SELECT clause FROM clauses WHERE resolved is FALSE LIMIT ?");
+            PreparedStatement pstmt = conn
+                    .prepareStatement("SELECT id, clause FROM clauses WHERE resolved is FALSE LIMIT ?");
             pstmt.setInt(1, amount);
             ResultSet results = pstmt.executeQuery();
             ArrayList<Clause> clauses = new ArrayList<>();
             while (results.next()) {
-                clauses.add(ClauseParser.parseClause(results.getString("clause")));
+                Clause new_clause = ClauseParser.parseClause(results.getString("clause"));
+                new_clause.setId(results.getInt("id"));
+                clauses.add(new_clause);
             }
             pstmt.close();
             conn.close();
@@ -139,18 +144,18 @@ public class Database {
             return;
         }
 
-        String[] clauseStrings = new String[clauses.size()];
+        int[] clauseIds = new int[clauses.size()];
         for (int i = 0; i < clauses.size(); i++) {
-            clauseStrings[i] = clauses.get(i).toString();
+            clauseIds[i] = clauses.get(i).getId();
         }
 
-        String sql = "UPDATE clauses SET resolved = TRUE WHERE clause IN ("
-                + String.join(",", Collections.nCopies(clauseStrings.length, "?")) + ")";
+        String sql = "UPDATE clauses SET resolved = TRUE WHERE id IN ("
+                + String.join(",", Collections.nCopies(clauseIds.length, "?")) + ")";
 
         try (Connection conn = DriverManager.getConnection(DB_PATH);
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            for (int i = 0; i < clauseStrings.length; i++) {
-                pstmt.setString(i + 1, clauseStrings[i]);
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            for (int i = 0; i < clauseIds.length; i++) {
+                pstmt.setInt(i + 1, clauseIds[i]);
             }
             pstmt.executeUpdate();
         } catch (SQLException e) {
@@ -200,8 +205,8 @@ public class Database {
     public int countClauses() {
         int count = 0;
         try (Connection conn = DriverManager.getConnection(DB_PATH);
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM clauses")) {
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM clauses")) {
             if (rs.next()) {
                 count = rs.getInt(1);
             }
@@ -211,4 +216,3 @@ public class Database {
         return count;
     }
 }
-

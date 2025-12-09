@@ -32,7 +32,7 @@ public class Clause {
             throw new IllegalArgumentException("ID must be a postive number");
 
         // this can only be set once
-        if (id != -1)
+        if (this.id != -1)
             throw new IllegalStateException("ID has already been set (" + this.id + ").");
         this.id = id;
     }
