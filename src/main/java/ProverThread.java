@@ -46,7 +46,12 @@ public class ProverThread implements Runnable {
             ArrayList<Clause> unresolved = database.getUnresolvedClauses(Constants.UNRESOLVED_BATCH_SIZE);
 
             if (unresolved.size() == 0) {
-                Thread.sleep(SLEEP_TIME);
+                try {
+                    Thread.sleep(SLEEP_TIME);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
                 continue;
             }
 
@@ -63,7 +68,8 @@ public class ProverThread implements Runnable {
             // resolve them
             for (int databaseIndex = startingId; startingId <= -Constants.CLAUSE_BATCH_SIZE; databaseIndex -= Constants.CLAUSE_BATCH_SIZE) {
                 ArrayList<Clause> clauses = database.getClauses(databaseIndex, Constants.CLAUSE_BATCH_SIZE);
-                newResolutions.addAll(newResolutions);
+
+                newResolutions.addAll(resolveArrayLists(unresolved, clauses));
 
                 // once we reach the threshold save resolvents and clear cache
                 if (newResolutions.size() >= Constants.RESOLVENT_SAVE_THRESHOLD) {

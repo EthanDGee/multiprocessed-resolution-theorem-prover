@@ -7,9 +7,12 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class Database {
+
     private String DB_PATH;
+    private ReentrantLock lock = new ReentrantLock();
 
     public Database(List<Clause> clauses) {
         this(clauses, "jdbc:sqlite:db.sqlite3");
@@ -116,6 +119,8 @@ public class Database {
     }
 
     public ArrayList<Clause> getUnresolvedClauses(int amount) {
+        lock.lock();
+        // TODO: ENSURE ALL SUBSEQUENT CALLS GET NEW UNRESOLVED CLAUSES
         try {
             Connection conn = DriverManager.getConnection(DB_PATH);
             PreparedStatement pstmt = conn
@@ -130,11 +135,12 @@ public class Database {
             }
             pstmt.close();
             conn.close();
-
+            lock.unlock();
             return clauses;
 
         } catch (SQLException e) {
             System.out.println(e.getMessage());
+            lock.unlock();
             return null;
         }
     }
@@ -152,6 +158,7 @@ public class Database {
         String sql = "UPDATE clauses SET resolved = TRUE WHERE id IN ("
                 + String.join(",", Collections.nCopies(clauseIds.length, "?")) + ")";
 
+        lock.lock();
         try (Connection conn = DriverManager.getConnection(DB_PATH);
                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
             for (int i = 0; i < clauseIds.length; i++) {
@@ -161,6 +168,7 @@ public class Database {
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
+        lock.unlock();
     }
 
     public boolean hasEmptyClause() {
