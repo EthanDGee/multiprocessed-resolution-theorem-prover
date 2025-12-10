@@ -11,6 +11,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class Database {
 
+    private int lastRetrieved = 0;
     private String DB_PATH;
     private ReentrantLock lock = new ReentrantLock();
 
@@ -25,6 +26,7 @@ public class Database {
         if (dbPath == null || dbPath.isEmpty()) {
             throw new IllegalArgumentException("dbPath cannot be null or empty");
         }
+
         this.DB_PATH = dbPath;
 
         // create the clauses table
@@ -120,21 +122,27 @@ public class Database {
 
     public ArrayList<Clause> getUnresolvedClauses(int amount) {
         lock.lock();
-        // TODO: ENSURE ALL SUBSEQUENT CALLS GET NEW UNRESOLVED CLAUSES
         try {
             Connection conn = DriverManager.getConnection(DB_PATH);
             PreparedStatement pstmt = conn
-                    .prepareStatement("SELECT id, clause FROM clauses WHERE resolved is FALSE LIMIT ?");
+                    .prepareStatement("SELECT id, clause FROM clauses WHERE resolved is FALSE LIMIT ? AND  id > ?");
             pstmt.setInt(1, amount);
+            pstmt.setInt(2, lastRetrieved);
             ResultSet results = pstmt.executeQuery();
             ArrayList<Clause> clauses = new ArrayList<>();
             while (results.next()) {
+
                 Clause new_clause = ClauseParser.parseClause(results.getString("clause"));
                 new_clause.setId(results.getInt("id"));
+                // update the lastRetrieved to reflect the last clause id
+                if (lastRetrieved < new_clause.getId())
+                    lastRetrieved = new_clause.getId();
+
                 clauses.add(new_clause);
             }
             pstmt.close();
             conn.close();
+
             lock.unlock();
             return clauses;
 
@@ -187,6 +195,7 @@ public class Database {
     }
 
     public void flushResolvents() {
+        // clear all clauses not in the starting set;
         try {
             Connection conn = DriverManager.getConnection(DB_PATH);
             Statement stmt = conn.createStatement();
@@ -196,6 +205,8 @@ public class Database {
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
+        // reset lastRetrieved index;
+        lastRetrieved = 0;
     }
 
     public void clearClauses() {
