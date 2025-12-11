@@ -13,6 +13,10 @@ public class ResolutionTheoremProver {
         this.database = new Database(clauses);
     }
 
+    public void closeDatabase() {
+        database.close();
+    }
+
     public boolean prove(Clause negativeCase) {
         database.flushResolvents(); // clear resolvents from previous runs
         database.addClause(negativeCase);
@@ -164,18 +168,22 @@ public class ResolutionTheoremProver {
 
         ResolutionTheoremProver prover = new ResolutionTheoremProver(clauses);
 
-        // Negation of conclusion: ¬Q(a)
-        Clause negatedConclusion = new Clause();
-        negatedConclusion.addLiteral(new Literal("Q", "a", false));
+        try {
+            // Negation of conclusion: ¬Q(a)
+            Clause negatedConclusion = new Clause();
+            negatedConclusion.addLiteral(new Literal("Q", "a", false));
 
-        System.out.println("Attempting to prove: From P(x)=>Q(x) and P(a), derive Q(a)");
-        System.out.println("Clauses:");
-        for (int i = 0; i < clauses.size(); i++) {
-            System.out.println("  " + (i + 1) + ": " + clauses.get(i));
+            System.out.println("Attempting to prove: From P(x)=>Q(x) and P(a), derive Q(a)");
+            System.out.println("Clauses:");
+            for (int i = 0; i < clauses.size(); i++) {
+                System.out.println("  " + (i + 1) + ": " + clauses.get(i));
+            }
+
+            boolean result = prover.prove(negatedConclusion);
+            System.out.println("\nProof " + (result ? "succeeded" : "failed"));
+        } finally {
+            prover.closeDatabase();
         }
-
-        boolean result = prover.prove(negatedConclusion);
-        System.out.println("\nProof " + (result ? "succeeded" : "failed"));
     }
 
 }

@@ -12,6 +12,10 @@ public class MultiThreadedResolver {
 
     }
 
+    public void closeDatabase() {
+        database.close();
+    }
+
     public Boolean prove(Clause negated) {
         database.flushResolvents();
         emptyClauseFound.set(false);
@@ -61,21 +65,23 @@ public class MultiThreadedResolver {
 
         MultiThreadedResolver prover = new MultiThreadedResolver(clauses);
 
-        // Negation of conclusion: ¬Mortal(Socrates)
-        Clause negatedConclusion = new Clause();
-        negatedConclusion.addLiteral(new Literal("Joseph", "Johnson", false));
+        try {
+            // Negation of conclusion: ¬Mortal(Socrates)
+            Clause negatedConclusion = new Clause();
+            negatedConclusion.addLiteral(new Literal("Mortal", "Socrates", false));
 
-        System.out.println("Attempting to prove: Mortal(Socrates)");
-        System.out.println("Clauses:");
-        for (int i = 0; i < clauses.size(); i++) {
-            System.out.println("  " + (i + 1) + ": " + clauses.get(i));
+            System.out.println("Attempting to prove: Mortal(Socrates)");
+            System.out.println("Clauses:");
+            for (int i = 0; i < clauses.size(); i++) {
+                System.out.println("  " + (i + 1) + ": " + clauses.get(i));
+            }
+            System.out.println("Negated Conclusion: " + negatedConclusion);
+
+            boolean result = prover.prove(negatedConclusion);
+            System.out.println("\nProof " + (result ? "succeeded" : "failed"));
+            System.out.println("----------------------------\n");
+        } finally {
+            prover.closeDatabase();
         }
-        System.out.println("Negated Conclusion: " + negatedConclusion);
-
-        boolean result = prover.prove(negatedConclusion);
-        System.out.println("\nProof " + (result ? "succeeded" : "failed"));
-        System.out.println("----------------------------\n");
-
-
     }
 }

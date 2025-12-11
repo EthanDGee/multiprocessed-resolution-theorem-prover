@@ -14,6 +14,7 @@ public class Database {
     private int lastRetrieved;
     private String DB_PATH;
     private ReentrantLock lock = new ReentrantLock();
+    private Connection conn;
 
     public Database(List<Clause> clauses) {
         this(clauses, "jdbc:sqlite:db.sqlite3");
@@ -29,18 +30,18 @@ public class Database {
 
         this.DB_PATH = dbPath;
 
-        // create the clauses table
         try {
-            Connection conn = DriverManager.getConnection(DB_PATH);
-            Statement stmt = conn.createStatement();
-            stmt.executeUpdate("CREATE TABLE IF NOT EXISTS clauses (id INTEGER PRIMARY KEY AUTOINCREMENT, clause TEXT UNIQUE, starting_set BOOLEAN DEFAULT FALSE,resolved BOOLEAN DEFAULT FALSE)");
-            // Enable WAL mode
-            stmt.executeUpdate("PRAGMA journal_mode=WAL");
-            stmt.close();
-            conn.close();
+            this.conn = DriverManager.getConnection(DB_PATH);
+            // create the clauses table
+            try (Statement stmt = conn.createStatement()) {
+                stmt.executeUpdate("CREATE TABLE IF NOT EXISTS clauses (id INTEGER PRIMARY KEY AUTOINCREMENT, clause TEXT UNIQUE, starting_set BOOLEAN DEFAULT FALSE,resolved BOOLEAN DEFAULT FALSE)");
+                // Enable WAL mode
+                stmt.executeUpdate("PRAGMA journal_mode=WAL");
+            }
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            throw new RuntimeException("Failed to connect to the database", e);
         }
+
         clearClauses();
 
         // fill clauses table with clauses
@@ -48,107 +49,112 @@ public class Database {
         for (int i = 0; i < clauses.size(); i++) {
             clauseStrings[i] = clauses.get(i).toString();
         }
-        try {
-            Connection conn = DriverManager.getConnection(DB_PATH);
-            PreparedStatement stmt = conn.prepareStatement("INSERT INTO clauses (clause, starting_set) VALUES (?, ?)");
+        try (PreparedStatement stmt = conn.prepareStatement("INSERT INTO clauses (clause, starting_set) VALUES (?, ?)")) {
             for (String clauseString : clauseStrings) {
                 stmt.setString(1, clauseString);
                 stmt.setBoolean(2, true);
                 stmt.addBatch();
             }
             stmt.executeBatch();
-            stmt.close();
-            conn.close();
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
         lastRetrieved = getFirstId();
     }
 
+    public void close() {
+        if (this.conn != null) {
+            try {
+                this.conn.close();
+            } catch (SQLException e) {
+                System.out.println(e.getMessage());
+            }
+        }
+    }
+
+
     public void addClause(Clause clause) {
         String clauseString = clause.toString();
 
-        try {
-            Connection conn = DriverManager.getConnection(DB_PATH);
-            PreparedStatement stmt = conn.prepareStatement("INSERT OR IGNORE INTO clauses (clause) VALUES (?)");
+        try (PreparedStatement stmt = conn.prepareStatement("INSERT OR IGNORE INTO clauses (clause) VALUES (?)")) {
             stmt.setString(1, clauseString);
             stmt.executeUpdate();
-            stmt.close();
-            conn.close();
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
     }
-    
-    public void addClauses(List<Clause> clauses) {
-        try (Connection conn = DriverManager.getConnection(DB_PATH);
-             PreparedStatement pstmt = conn.prepareStatement("INSERT OR IGNORE INTO clauses (clause) VALUES (?)")) {
 
+    public void addClauses(List<Clause> clauses) {
+        try (PreparedStatement pstmt = conn.prepareStatement("INSERT OR IGNORE INTO clauses (clause) VALUES (?)")) {
+            conn.setAutoCommit(false);
             for (Clause clause : clauses) {
                 pstmt.setString(1, clause.toString());
                 pstmt.addBatch();
             }
             pstmt.executeBatch();
+            conn.commit();
         } catch (SQLException e) {
             System.out.println(e.getMessage());
+            if (conn != null) {
+                try {
+                    conn.rollback();
+                } catch (SQLException ex) {
+                    System.out.println(ex.getMessage());
+                }
+            }
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true);
+                } catch (SQLException e) {
+                    System.out.println(e.getMessage());
+                }
+            }
         }
     }
 
     public ArrayList<Clause> getClauses(int startingIndex, int amount) {
-        try {
-            Connection conn = DriverManager.getConnection(DB_PATH);
-            PreparedStatement pstmt = conn.prepareStatement("SELECT id, clause FROM clauses WHERE id >= ? LIMIT ?");
+        ArrayList<Clause> clauses = new ArrayList<>();
+        try (PreparedStatement pstmt = conn.prepareStatement("SELECT id, clause FROM clauses WHERE id >= ? LIMIT ?")) {
             pstmt.setInt(1, startingIndex);
             pstmt.setInt(2, amount);
-            ResultSet results = pstmt.executeQuery();
-            ArrayList<Clause> clauses = new ArrayList<>();
-
-            while (results.next()) {
-                Clause new_clause = ClauseParser.parseClause(results.getString("clause"));
-                new_clause.setId(results.getInt("id"));
-                clauses.add(new_clause);
+            try (ResultSet results = pstmt.executeQuery()) {
+                while (results.next()) {
+                    Clause new_clause = ClauseParser.parseClause(results.getString("clause"));
+                    new_clause.setId(results.getInt("id"));
+                    clauses.add(new_clause);
+                }
             }
-            pstmt.close();
-            conn.close();
-
-            return clauses;
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
-        return null;
+        return clauses;
     }
 
     public ArrayList<Clause> getUnresolvedClauses(int amount) {
+        ArrayList<Clause> clauses = new ArrayList<>();
         lock.lock();
-        try {
-            Connection conn = DriverManager.getConnection(DB_PATH);
-            PreparedStatement pstmt = conn
-                    .prepareStatement("SELECT id, clause FROM clauses WHERE resolved is FALSE AND id >= ? LIMIT ?");
+        try (PreparedStatement pstmt = conn.prepareStatement("SELECT id, clause FROM clauses WHERE resolved is FALSE AND id >= ? LIMIT ?")) {
             pstmt.setInt(1, lastRetrieved);
             pstmt.setInt(2, amount);
-            ResultSet results = pstmt.executeQuery();
-            ArrayList<Clause> clauses = new ArrayList<>();
-            while (results.next()) {
-                System.out.println("Retrieved clause:" + results.getString("clause"));
-                Clause new_clause = ClauseParser.parseClause(results.getString("clause"));
-                new_clause.setId(results.getInt("id"));
-                // update the lastRetrieved to reflect the last clause id
-                if (lastRetrieved < new_clause.getId())
-                    lastRetrieved = new_clause.getId();
+            try (ResultSet results = pstmt.executeQuery()) {
+                while (results.next()) {
+                    System.out.println("Retrieved clause:" + results.getString("clause"));
+                    Clause new_clause = ClauseParser.parseClause(results.getString("clause"));
+                    new_clause.setId(results.getInt("id"));
+                    // update the lastRetrieved to reflect the last clause id
+                    if (lastRetrieved < new_clause.getId())
+                        lastRetrieved = new_clause.getId();
 
-                clauses.add(new_clause);
+                    clauses.add(new_clause);
+                }
             }
-            pstmt.close();
-            conn.close();
-
-            lock.unlock();
-            return clauses;
-
         } catch (SQLException e) {
             System.out.println(e.getMessage());
+        } finally {
             lock.unlock();
-            return new ArrayList<>();
         }
+        return clauses;
     }
 
     public void setResolved(List<Clause> clauses) {
@@ -165,28 +171,24 @@ public class Database {
                 + String.join(",", Collections.nCopies(clauseIds.length, "?")) + ")";
 
         lock.lock();
-        try (Connection conn = DriverManager.getConnection(DB_PATH);
-                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             for (int i = 0; i < clauseIds.length; i++) {
                 pstmt.setInt(i + 1, clauseIds[i]);
             }
             pstmt.executeUpdate();
         } catch (SQLException e) {
             System.out.println(e.getMessage());
+        } finally {
+            lock.unlock();
         }
-        lock.unlock();
     }
 
     public boolean hasEmptyClause() {
-        try {
-            Connection conn = DriverManager.getConnection(DB_PATH);
-            PreparedStatement stmt = conn.prepareStatement("SELECT id FROM clauses WHERE clause like ? LIMIT 1");
+        try (PreparedStatement stmt = conn.prepareStatement("SELECT id FROM clauses WHERE clause like ? LIMIT 1")) {
             stmt.setString(1, Constants.EMPTY_CLAUSE);
-            ResultSet results = stmt.executeQuery();
-            boolean hasEmpty = results.next(); // returns true if there is at least one result
-            stmt.close();
-            conn.close();
-            return hasEmpty;
+            try (ResultSet results = stmt.executeQuery()) {
+                return results.next(); // returns true if there is at least one result
+            }
         } catch (SQLException e) {
             System.out.println(e.getMessage());
             return false;
@@ -195,9 +197,7 @@ public class Database {
 
     public void flushResolvents() {
         // clear all clauses not in the starting set;
-        try {
-            Connection conn = DriverManager.getConnection(DB_PATH);
-            Statement stmt = conn.createStatement();
+        try (Statement stmt = conn.createStatement()) {
             stmt.executeUpdate("DELETE FROM clauses where starting_set = FALSE");
 
             // reset starting set resolved to false
@@ -207,8 +207,6 @@ public class Database {
             stmt.executeUpdate("VACUUM");
             stmt.executeUpdate("PRAGMA optimize");
             stmt.executeUpdate("PRAGMA wal_checkpoint(TRUNCATE)");
-            stmt.close();
-            conn.close();
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
@@ -217,37 +215,29 @@ public class Database {
     }
 
     public void clearClauses() {
-        try {
-            Connection conn = DriverManager.getConnection(DB_PATH);
-            Statement stmt = conn.createStatement();
+        try (Statement stmt = conn.createStatement()) {
             stmt.executeUpdate("DELETE FROM clauses");
-            stmt.close();
-            conn.close();
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
     }
 
     private int getFirstId() {
-        try {
-            Connection conn = DriverManager.getConnection(DB_PATH);
-            Statement stmt = conn.createStatement();
-            ResultSet result = stmt.executeQuery("SELECT id FROM clauses ORDER BY id LIMIT 1");
-            int firstId = result.getInt("id");
-            return firstId;
-
+        try (Statement stmt = conn.createStatement();
+             ResultSet result = stmt.executeQuery("SELECT id FROM clauses ORDER BY id LIMIT 1")) {
+            if (result.next()) {
+                return result.getInt("id");
+            }
         } catch (SQLException e) {
             System.out.println(e.getMessage());
-            return -1;
         }
-
+        return -1;
     }
 
     public int countClauses() {
         int count = 0;
-        try (Connection conn = DriverManager.getConnection(DB_PATH);
-                Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM clauses")) {
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM clauses")) {
             if (rs.next()) {
                 count = rs.getInt(1);
             }
