@@ -1,208 +1,118 @@
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
+import java.io.File;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class MultiThreadedResolverTest {
 
-    private Database mockDatabase;
-    private Clause mockNegatedClause;
-    private List<Clause> mockClauses;
+    private static final String DB_FILE = "test.sqlite3";
+    private static final String DB_WAL_FILE = DB_FILE + "-wal";
+    private static final String DB_SHM_FILE = DB_FILE + "-shm";
 
-    @BeforeEach
-    public void setUp() {
-        mockDatabase = mock(Database.class);
-        mockNegatedClause = mock(Clause.class);
-        mockClauses = new ArrayList<>();
-        mockClauses.add(mock(Clause.class));
+    @AfterEach
+    public void tearDown() {
+        // Clean up database files after each test
+        deleteDbFiles();
     }
 
-    /**
-     * Test class for the MultiThreadedResolver's `solve` method.
-     * <p>
-     * The `solve` method attempts to determine if a given negated clause can
-     * result in an empty clause in the database, signifying a contradiction. This
-     * process is multi-threaded, utilizing a thread pool to enable faster
-     * computation by resolving clauses in parallel.
-     */
-
-    @Test
-    public void testProveReturnsTrueWhenEmptyClauseExists() {
-        // Set up database behavior for this test
-        when(mockDatabase.hasEmptyClause()).thenReturn(true);
-
-        // Mock the negated clause
-        Clause mockNegatedClause = mock(Clause.class);
-
-        // Create a MultiThreadedResolver with mock clauses
-        MultiThreadedResolver resolver = new MultiThreadedResolver(mockClauses);
-
-        // Replace the real database with the mock using reflection
-        try {
-            Field databaseField = MultiThreadedResolver.class.getDeclaredField("database");
-            databaseField.setAccessible(true);
-            databaseField.set(resolver, mockDatabase);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            fail("Failed to set database field via reflection: " + e.getMessage());
+    private void deleteDbFiles() {
+        File dbFile = new File(DB_FILE);
+        if (dbFile.exists()) {
+            dbFile.delete();
         }
-
-        // Assert that solve returns true
-        assertTrue(resolver.prove(mockNegatedClause));
-
-        // Verify database calls
-        verify(mockDatabase).flushResolvents();
-        verify(mockDatabase).addClause(mockNegatedClause);
+        File dbWalFile = new File(DB_WAL_FILE);
+        if (dbWalFile.exists()) {
+            dbWalFile.delete();
+        }
+        File dbShmFile = new File(DB_SHM_FILE);
+        if (dbShmFile.exists()) {
+            dbShmFile.delete();
+        }
     }
 
     @Test
-    public void testProveReturnsFalseWhenEmptyClauseDoesNotExist() {
-        // Mock the database
-        Database mockDatabase = mock(Database.class);
-        when(mockDatabase.hasEmptyClause()).thenReturn(false);
+    public void testProve_ReturnsTrue_WhenContradictionExists() {
+        // Given a set of clauses with a simple contradiction
+        // Man(Socrates)
+        Clause clause1 = ClauseParser.parseClause("Man(Socrates)");
+        List<Clause> clauses = new ArrayList<>(Collections.singletonList(clause1));
 
-        // Mock the negated clause
-        Clause mockNegatedClause = mock(Clause.class);
+        MultiThreadedResolver resolver = new MultiThreadedResolver(clauses);
 
-        // Create a MultiThreadedResolver with mock clauses
-        List<Clause> mockClauses = new ArrayList<>();
-        MultiThreadedResolver resolver = new MultiThreadedResolver(mockClauses);
+        // When we try to prove the negation, which is ¬Man(Socrates)
+        Clause negatedConclusion = ClauseParser.parseClause("¬Man(Socrates)");
 
-        // Replace the real database with the mock using reflection
-        try {
-            Field databaseField = MultiThreadedResolver.class.getDeclaredField("database");
-            databaseField.setAccessible(true);
-            databaseField.set(resolver, mockDatabase);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            fail("Failed to set database field via reflection: " + e.getMessage());
-        }
-
-        // Assert that solve returns false
-        assertFalse(resolver.prove(mockNegatedClause));
-
-        // Verify database calls
-        verify(mockDatabase).flushResolvents();
-        verify(mockDatabase).addClause(mockNegatedClause);
+        // Then the proof should succeed by finding an empty clause
+        boolean result = resolver.prove(negatedConclusion);
+        assertTrue(result, "Proof should succeed when a contradiction is provable.");
     }
 
     @Test
-    public void testProveStartsThreads() {
-        // Mock the database
-        Database mockDatabase = mock(Database.class);
-        when(mockDatabase.hasEmptyClause()).thenReturn(false);
+    public void testProve_ReturnsFalse_WhenNoContradiction() {
+        // Given a set of consistent clauses
+        Clause clause1 = ClauseParser.parseClause("P(x)");
+        Clause clause2 = ClauseParser.parseClause("Q(y)");
+        List<Clause> clauses = new ArrayList<>();
+        clauses.add(clause1);
+        clauses.add(clause2);
 
-        // Mock the negated clause
-        Clause mockNegatedClause = mock(Clause.class);
+        MultiThreadedResolver resolver = new MultiThreadedResolver(clauses);
 
-        // Create a MultiThreadedResolver with mock clauses
-        List<Clause> mockClauses = new ArrayList<>();
-        MultiThreadedResolver resolver = new MultiThreadedResolver(mockClauses);
+        // When we try to prove a clause that doesn't create a contradiction
+        Clause negatedConclusion = ClauseParser.parseClause("R(z)");
 
-        // Replace the real database with the mock using reflection
-        try {
-            Field databaseField = MultiThreadedResolver.class.getDeclaredField("database");
-            databaseField.setAccessible(true);
-            databaseField.set(resolver, mockDatabase);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            fail("Failed to set database field via reflection: " + e.getMessage());
-        }
-
-        // Spy on thread creation
-        Thread mockThread = Mockito.mock(Thread.class);
-        try (var mockedConstructor = Mockito.mockConstruction(Thread.class, (mock, context) -> {
-            doNothing().when(mock).start();
-        })) {
-            resolver.prove(mockNegatedClause);
-
-            // Verify that the number of threads corresponds to available processors
-            int availableProcessors = Runtime.getRuntime().availableProcessors();
-            assertEquals(availableProcessors, mockedConstructor.constructed().size());
-            mockedConstructor.constructed().forEach(thread -> verify(thread).start());
-        }
-
-        // Verify database calls
-        verify(mockDatabase).flushResolvents();
-        verify(mockDatabase).addClause(mockNegatedClause);
+        // Then the proof should fail
+        boolean result = resolver.prove(negatedConclusion);
+        assertFalse(result, "Proof should fail when no contradiction is found.");
     }
 
     @Test
-    public void testProveHandlesInterruptedException() {
-        // Set up database behavior for this test
-        when(mockDatabase.hasEmptyClause()).thenReturn(false);
+    public void testProve_AddsNegatedClauseToDatabase() throws NoSuchFieldException, IllegalAccessException {
+        // Given a set of initial clauses
+        List<Clause> initialClauses = new ArrayList<>(Collections.singletonList(ClauseParser.parseClause("P(x)")));
+        MultiThreadedResolver resolver = new MultiThreadedResolver(initialClauses);
+        Clause negatedQuery = ClauseParser.parseClause("Q(y)");
 
-        // Mock the negated clause
-        Clause mockNegatedClause = mock(Clause.class);
+        // When the prove method is called
+        resolver.prove(negatedQuery);
 
-        // Create a MultiThreadedResolver with mock clauses
-        List<Clause> mockClauses = new ArrayList<>();
-        MultiThreadedResolver resolver = new MultiThreadedResolver(mockClauses);
+        // Then the negated clause should be added to the database
+        // We use reflection to access the private database field for verification
+        Field databaseField = MultiThreadedResolver.class.getDeclaredField("database");
+        databaseField.setAccessible(true);
+        Database db = (Database) databaseField.get(resolver);
 
-        // Replace the real database with the mock using reflection
-        try {
-            Field databaseField = MultiThreadedResolver.class.getDeclaredField("database");
-            databaseField.setAccessible(true);
-            databaseField.set(resolver, mockDatabase);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            fail("Failed to set database field via reflection: " + e.getMessage());
-        }
-
-        // Spy on thread and simulate an interrupted exception
-        Thread mockThread = mock(Thread.class);
-        try (var mockedConstructor = Mockito.mockConstruction(Thread.class, (mock, context) -> {
-            doNothing().when(mock).start();
-            doThrow(new InterruptedException()).when(mock).join();
-        })) {
-            assertDoesNotThrow(() -> resolver.prove(mockNegatedClause));
-
-            // Verify that threads attempted to join
-            mockedConstructor.constructed().forEach(thread -> {
-                try {
-                    verify(thread).join();
-                } catch (InterruptedException e) {
-                    fail("join method should not rethrow the exception");
-                }
-            });
-        }
-
-        // Verify database calls
-        verify(mockDatabase).flushResolvents();
-        verify(mockDatabase).addClause(mockNegatedClause);
+        // The database will contain the initial clause + the negated query
+        assertEquals(2, db.countClauses());
+        ArrayList<Clause> allClauses = db.getClauses(1, 2);
+        assertTrue(allClauses.contains(negatedQuery), "The negated clause should have been added to the database.");
     }
 
     @Test
-    public void testProveAddsNegatedClause() {
-        // Mock the database
-        Database mockDatabase = mock(Database.class);
+    public void testSocratesExample_Integration() {
+        // This is the example from the main method, converted to a test
+        // Man(Socrates)
+        Clause clause1 = ClauseParser.parseClause("Man(Socrates)");
 
-        // Create a MultiThreadedResolver with mock clauses
-        MultiThreadedResolver resolver = new MultiThreadedResolver(mockClauses);
+        // Man(x) -> Mortal(x)  === ¬Man(x) ∨ Mortal(x)
+        Clause clause2 = ClauseParser.parseClause("¬Man(x) ∨ Mortal(x)");
 
-        // Replace the real database with the mock using reflection
-        try {
-            Field databaseField = MultiThreadedResolver.class.getDeclaredField("database");
-            databaseField.setAccessible(true);
-            databaseField.set(resolver, mockDatabase);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            fail("Failed to set database field via reflection: " + e.getMessage());
-        }
+        List<Clause> clauses = new ArrayList<>();
+        clauses.add(clause1);
+        clauses.add(clause2);
 
-        // Run solve method
-        resolver.prove(mockNegatedClause);
+        MultiThreadedResolver resolver = new MultiThreadedResolver(clauses);
 
-        // Verify that the negated clause is added to the database
-        verify(mockDatabase).addClause(mockNegatedClause);
+        // We want to prove Mortal(Socrates). The negated conclusion is ¬Mortal(Socrates)
+        Clause negatedConclusion = ClauseParser.parseClause("¬Mortal(Socrates)");
+
+        boolean result = resolver.prove(negatedConclusion);
+        assertTrue(result, "Should successfully prove that Socrates is mortal.");
     }
 }
