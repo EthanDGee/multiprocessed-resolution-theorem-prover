@@ -1,17 +1,33 @@
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class MultiThreadedResolver {
 
     private final Database database;
-    private final AtomicBoolean emptyClauseFound = new AtomicBoolean(false);
+    private final AtomicInteger activeWorkers = new AtomicInteger(0);
+    private final AtomicBoolean solutionFound = new AtomicBoolean(false);
 
     public MultiThreadedResolver(List<Clause> clauses) {
         this.database = new Database(clauses);
-
     }
 
+    public void workerStarted() {
+        activeWorkers.incrementAndGet();
+    }
+
+    public void workerStopped() {
+        activeWorkers.decrementAndGet();
+    }
+
+    public void solutionWasFound() {
+        solutionFound.set(true);
+    }
+
+    public boolean solutionFound() {
+        return solutionFound.get();
+    }
 
     public void closeDatabase() {
         database.close();
@@ -19,34 +35,69 @@ public class MultiThreadedResolver {
 
     public Boolean prove(Clause negated) {
         database.flushResolvents();
-        emptyClauseFound.set(false);
+        solutionFound.set(false);
 
         database.addClause(negated);
 
         // Create Thread Pool
         int availableProcessors = Runtime.getRuntime().availableProcessors();
-        //TODO: IMPLEMENT BETTER STOPPER
         List<Thread> resolverThreads = new ArrayList<>();
 
         for (int i = 0; i < availableProcessors; i++) {
             // Creates a new Runnable
-            Runnable worker = new ProverThread(i, database, emptyClauseFound); // adds the new thread
+            Runnable worker = new ProverThread(i, database, this); // adds the new thread
             resolverThreads.add(new Thread(worker));
             // runs the thread
             resolverThreads.get(i).start();
         }
 
-        // This loops through the threads and waits for them to finish/checks if they
-        // are finished
+        // Coordinator loop to check for termination conditions
+        while (true) {
+            if (solutionFound.get()) {
+                System.out.println("Coordinator: Solution found, terminating.");
+                break;
+            }
+
+            if (activeWorkers.get() == 0 && !database.hasUnresolvedClauses()) {
+                System.out.println("Coordinator: No active workers and no new clauses. Double checking...");
+                try {
+                    // Wait a moment to ensure this is a stable state, not a transient one
+                    Thread.sleep(100);
+                    if (activeWorkers.get() == 0 && !database.hasUnresolvedClauses()) {
+                        System.out.println("Coordinator: Confirmed saturation, terminating.");
+                        break; // saturation reached
+                    } else {
+                        System.out.println("Coordinator: Double check failed. Interruption cancelled.");
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+
+        // Interrupt all worker threads to ensure they exit their loops
+        for (Thread thread : resolverThreads) {
+            thread.interrupt();
+        }
+
         for (Thread thread : resolverThreads) {
             try {
                 thread.join();
             } catch (Exception e) {
-                System.out.println(e.getMessage());
+                System.out.println("Error joining thread: " + e.getMessage());
             }
         }
 
-        return emptyClauseFound.get();
+        System.out.println("Coordinator: All threads finished.");
+        return solutionFound.get();
     }
 
     public static void main(String[] args) {

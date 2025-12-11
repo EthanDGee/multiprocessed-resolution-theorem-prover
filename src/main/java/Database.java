@@ -209,6 +209,15 @@ public class Database {
         }
     }
 
+    public boolean hasUnresolvedClauses() {
+        lock.lock();
+        try {
+            return lastRetrieved <= lastId;
+        } finally {
+            lock.unlock();
+        }
+    }
+
     public void flushResolvents() {
         lock.lock();
         try {
