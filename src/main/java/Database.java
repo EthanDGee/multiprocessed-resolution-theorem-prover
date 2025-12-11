@@ -73,7 +73,7 @@ public class Database {
             } catch (SQLException e) {
                 System.out.println(e.getMessage());
             }
-            lastId++;
+            lastId = getLastId(); // we can't use ++ as insertion may be ignored
             hasNewClauses.signalAll();
         } finally {
             lock.unlock();
@@ -96,7 +96,7 @@ public class Database {
                 pstmt.addBatch();
             }
             pstmt.executeBatch();
-            lastId += clauses.size();
+            lastId = getLastId();// we can't use simple + as some insertions may be ignored
             conn.commit();
             hasNewClauses.signalAll();
         } catch (SQLException e) {
@@ -142,10 +142,10 @@ public class Database {
     public ArrayList<Clause> getUnresolvedClauses(int amount) throws InterruptedException {
         ArrayList<Clause> clauses = new ArrayList<>();
         try {
+            lock.lock();
             while (lastRetrieved >= lastId) {
                 hasNewClauses.await();
             }
-            lock.lock();
             try (PreparedStatement pstmt = conn
                     .prepareStatement("SELECT id, clause FROM clauses WHERE resolved is FALSE AND id >= ? LIMIT ?")) {
                 pstmt.setInt(1, lastRetrieved);
