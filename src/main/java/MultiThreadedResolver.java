@@ -11,6 +11,7 @@ public class MultiThreadedResolver {
     }
 
     public Boolean solve(Clause negated) {
+        database.flushResolvents();
 
         database.addClause(negated);
 
