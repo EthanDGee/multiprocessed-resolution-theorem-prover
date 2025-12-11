@@ -1,9 +1,11 @@
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MultiThreadedResolver {
 
     private final Database database;
+    private final AtomicBoolean emptyClauseFound = new AtomicBoolean(false);
 
     public MultiThreadedResolver(List<Clause> clauses) {
         this.database = new Database(clauses);
@@ -12,6 +14,7 @@ public class MultiThreadedResolver {
 
     public Boolean prove(Clause negated) {
         database.flushResolvents();
+        emptyClauseFound.set(false);
 
         database.addClause(negated);
 
@@ -22,7 +25,7 @@ public class MultiThreadedResolver {
 
         for (int i = 0; i < availableProcessors; i++) {
             // Creates a new Runnable
-            Runnable worker = new ProverThread(i, working, database); // adds the new thread
+            Runnable worker = new ProverThread(i, working, database, emptyClauseFound); // adds the new thread
             resolverThreads.add(new Thread(worker));
             // runs the thread
             resolverThreads.get(i).start();
@@ -38,7 +41,7 @@ public class MultiThreadedResolver {
             }
         }
 
-        return database.hasEmptyClause();
+        return emptyClauseFound.get();
     }
 
     public static void main(String[] args) {

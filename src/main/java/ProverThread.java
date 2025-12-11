@@ -2,17 +2,20 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ProverThread implements Runnable {
 
     private final int id;
     private final boolean[] working;
     private final Database database;
+    private final AtomicBoolean emptyClauseFound;
 
-    public ProverThread(int id, boolean[] working, Database database) {
+    public ProverThread(int id, boolean[] working, Database database, AtomicBoolean emptyClauseFound) {
         this.id = id;
         this.working = working;
         this.database = database;
+        this.emptyClauseFound = emptyClauseFound;
     }
 
     public boolean threadWorking() {
@@ -31,8 +34,16 @@ public class ProverThread implements Runnable {
         // iterate over all clauses in unresolved and resolves them against clauses
         for (Clause clause1 : unresolved) {
             for (Clause clause2 : clauses) {
+                if (emptyClauseFound.get()) {
+                    return newResolutions;
+                }
                 List<Clause> resolvents = ResolutionTheoremProver.resolve(clause1, clause2);
-                newResolutions.addAll(resolvents);
+                for (Clause resolvent : resolvents) {
+                    if (resolvent.isEmpty()) {
+                        emptyClauseFound.set(true);
+                    }
+                    newResolutions.add(resolvent);
+                }
             }
         }
 
@@ -48,7 +59,7 @@ public class ProverThread implements Runnable {
         int SLEEP_MS = 500;
 
         // while there is no empty clause try and solve the problem
-        while (!database.hasEmptyClause() & threadWorking()) {
+        while (!emptyClauseFound.get() && threadWorking()) {
 
             ArrayList<Clause> unresolved = database.getUnresolvedClauses(Constants.UNRESOLVED_BATCH_SIZE);
 
@@ -77,6 +88,9 @@ public class ProverThread implements Runnable {
             int databaseIndex = startingId;
 
             while (databaseIndex >= -Constants.CLAUSE_BATCH_SIZE) {
+                if (emptyClauseFound.get()) {
+                    break;
+                }
                 ArrayList<Clause> batch_clauses = database.getClauses(databaseIndex, Constants.CLAUSE_BATCH_SIZE);
                 newResolutions.addAll(resolveArrayLists(unresolved, batch_clauses));
 
