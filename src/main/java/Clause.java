@@ -70,7 +70,7 @@ public class Clause {
     @Override
     public String toString() {
         if (this.literals.isEmpty()) {
-            return "nil";
+            return Constants.EMPTY_CLAUSE;
         }
 
         List<String> atomStrings = new ArrayList<>();

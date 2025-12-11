@@ -180,8 +180,9 @@ public class Database {
     public boolean hasEmptyClause() {
         try {
             Connection conn = DriverManager.getConnection(DB_PATH);
-            Statement stmt = conn.createStatement();
-            ResultSet results = stmt.executeQuery("SELECT id FROM clauses WHERE clause like 'nil' LIMIT 1");
+            PreparedStatement stmt = conn.prepareStatement("SELECT id FROM clauses WHERE clause like ? LIMIT 1");
+            stmt.setString(1, Constants.EMPTY_CLAUSE);
+            ResultSet results = stmt.executeQuery();
             boolean hasEmpty = results.next(); // returns true if there is at least one result
             stmt.close();
             conn.close();

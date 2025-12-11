@@ -1,6 +1,8 @@
 public class Constants {
-    // Literal Constants
+    // Clause Constants
+    public static final String EMPTY_CLAUSE= "nil";
 
+    // Literal Constants
     public static final char NEGATIVE_SYMBOL = '¬';
 
     // Database Constants

@@ -8,6 +8,9 @@ public class ClauseParser {
     private static final Pattern CLAUSE_PATTERN = Pattern.compile("\\s*∨\\s*|\\s*\\|\\s*|\\s*,\\s*");
 
     public static Clause parseClause(String clauseString) {
+        if (clauseString.equals(Constants.EMPTY_CLAUSE))
+            return new Clause();
+
         Clause clause = new Clause();
 
         String[] atomStrings = clauseString.split(CLAUSE_PATTERN.pattern());
@@ -50,4 +53,5 @@ public class ClauseParser {
         return clauses;
     }
 
+    // TODO: Add ability to load clauses from file
 }

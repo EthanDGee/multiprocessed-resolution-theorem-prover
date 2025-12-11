@@ -115,7 +115,7 @@ public class ClauseTest {
     @Test
     public void testToString() {
         Clause emptyClause = new Clause();
-        assertEquals("nil", emptyClause.toString());
+        assertEquals(Constants.EMPTY_CLAUSE, emptyClause.toString());
 
         Literal literal1 = new Literal("P", "x", true);
         Literal literal2 = new Literal("Q", "y", false);

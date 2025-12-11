@@ -211,7 +211,7 @@ public class DatabaseTest {
     @Test
     public void testHasEmptyClause() {
         assertFalse(database.hasEmptyClause());
-        database.addClause(new Clause()); // An empty clause's toString is "nil"
+        database.addClause(new Clause());
         assertTrue(database.hasEmptyClause());
     }
 
