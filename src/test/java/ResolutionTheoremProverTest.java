@@ -1,10 +1,11 @@
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
 
 public class ResolutionTheoremProverTest {
 
@@ -23,7 +24,7 @@ public class ResolutionTheoremProverTest {
         List<Clause> clauses = new ArrayList<>();
         Clause clause1 = new Clause();
         clause1.addLiteral(new Literal("P", "x", false)); // ¬P(x)
-        clause1.addLiteral(new Literal("Q", "x", true));  // Q(x)
+        clause1.addLiteral(new Literal("Q", "x", true)); // Q(x)
         clauses.add(clause1);
 
         Clause clause2 = new Clause();
@@ -37,7 +38,8 @@ public class ResolutionTheoremProverTest {
         ResolutionTheoremProver prover = new ResolutionTheoremProver(clauses);
 
         // Act & Assert
-        assertTrue(prover.prove(negatedConclusion), "The prover should return true when a contradiction (empty clause) can be derived.");
+        assertTrue(prover.prove(negatedConclusion),
+                "The prover should return true when a contradiction (empty clause) can be derived.");
     }
 
     @Test
@@ -46,7 +48,7 @@ public class ResolutionTheoremProverTest {
         List<Clause> clauses = new ArrayList<>();
         Clause clause1 = new Clause();
         clause1.addLiteral(new Literal("P", "x", false)); // ¬P(x)
-        clause1.addLiteral(new Literal("Q", "x", true));  // Q(x)
+        clause1.addLiteral(new Literal("Q", "x", true)); // Q(x)
         clauses.add(clause1);
 
         // Target Clause: ¬R(a)
@@ -56,7 +58,8 @@ public class ResolutionTheoremProverTest {
         ResolutionTheoremProver prover = new ResolutionTheoremProver(clauses);
 
         // Act & Assert
-        assertFalse(prover.prove(negatedConclusion), "The prover should return false when no contradiction (empty clause) can be derived.");
+        assertFalse(prover.prove(negatedConclusion),
+                "The prover should return false when no contradiction (empty clause) can be derived.");
     }
 
     @Test
@@ -65,7 +68,7 @@ public class ResolutionTheoremProverTest {
         List<Clause> clauses = new ArrayList<>();
         Clause clause1 = new Clause();
         clause1.addLiteral(new Literal("P", "a", false)); // ¬P(a)
-        clause1.addLiteral(new Literal("Q", "a", true));  // Q(a)
+        clause1.addLiteral(new Literal("Q", "a", true)); // Q(a)
         clauses.add(clause1);
 
         Clause clause2 = new Clause();
@@ -79,7 +82,8 @@ public class ResolutionTheoremProverTest {
         ResolutionTheoremProver prover = new ResolutionTheoremProver(clauses);
 
         // Act & Assert
-        assertTrue(prover.prove(negatedConclusion), "The prover should return true when the resolution process generates an empty clause (contradiction).");
+        assertTrue(prover.prove(negatedConclusion),
+                "The prover should return true when the resolution process generates an empty clause (contradiction).");
     }
 
     @Test
@@ -91,7 +95,7 @@ public class ResolutionTheoremProverTest {
         // 4. P(a)
         List<Clause> clauses = new ArrayList<>();
         Clause clause1 = new Clause();
-        clause1.addLiteral(new Literal("Q", "x", true));  // Q(x)
+        clause1.addLiteral(new Literal("Q", "x", true)); // Q(x)
         clause1.addLiteral(new Literal("R", "x", false)); // ¬R(x)
         clauses.add(clause1);
 
@@ -101,7 +105,7 @@ public class ResolutionTheoremProverTest {
 
         Clause clause3 = new Clause();
         clause3.addLiteral(new Literal("P", "x", false)); // ¬P(x)
-        clause3.addLiteral(new Literal("Q", "x", true));  // Q(x)
+        clause3.addLiteral(new Literal("Q", "x", true)); // Q(x)
         clauses.add(clause3);
 
         Clause clause4 = new Clause();
@@ -115,6 +119,77 @@ public class ResolutionTheoremProverTest {
         ResolutionTheoremProver prover = new ResolutionTheoremProver(clauses);
 
         // Act & Assert
-        assertTrue(prover.prove(negatedConclusion), "The prover should return true for a complex case where a contradiction (empty clause) can be derived.");
+        assertTrue(prover.prove(negatedConclusion),
+                "The prover should return true for a complex case where a contradiction (empty clause) can be derived.");
     }
+
+    @Test
+    public void testBasicResolution() {
+        Clause clause1 = new Clause();
+        clause1.addLiteral(new Literal("P", "a", true));
+
+        Clause clause2 = new Clause();
+        clause2.addLiteral(new Literal("P", "a", false));
+
+        List<Clause> resolvents = ResolutionTheoremProver.resolve(clause1, clause2);
+
+        assertEquals(1, resolvents.size());
+        assertTrue(resolvents.get(0).getLiterals().isEmpty());
+    }
+
+    @Test
+    public void testResolutionWithUnification() {
+        Clause clause1 = new Clause();
+        clause1.addLiteral(new Literal("P", "x", true));
+
+        Clause clause2 = new Clause();
+        clause2.addLiteral(new Literal("P", "a", false));
+
+        List<Clause> resolvents = ResolutionTheoremProver.resolve(clause1, clause2);
+
+        assertEquals(1, resolvents.size());
+        assertTrue(resolvents.get(0).getLiterals().isEmpty());
+    }
+
+    @Test
+    public void testResolutionWithIncompatiblePredicates() {
+        Clause clause1 = new Clause();
+        clause1.addLiteral(new Literal("P", "x", true));
+
+        Clause clause2 = new Clause();
+        clause2.addLiteral(new Literal("Q", "x", false));
+
+        List<Clause> resolvents = ResolutionTheoremProver.resolve(clause1, clause2);
+
+        assertTrue(resolvents.isEmpty());
+    }
+
+    @Test
+    public void testMultipleResolvents() {
+        Clause clause1 = new Clause();
+        clause1.addLiteral(new Literal("P", "x", true));
+        clause1.addLiteral(new Literal("Q", "x", true));
+
+        Clause clause2 = new Clause();
+        clause2.addLiteral(new Literal("P", "x", false));
+        clause2.addLiteral(new Literal("Q", "x", false));
+
+        List<Clause> resolvents = ResolutionTheoremProver.resolve(clause1, clause2);
+
+        assertEquals(2, resolvents.size());
+    }
+
+    @Test
+    public void testNoResolutionPossible() {
+        Clause clause1 = new Clause();
+        clause1.addLiteral(new Literal("P", "x", true));
+
+        Clause clause2 = new Clause();
+        clause2.addLiteral(new Literal("P", "x", true));
+
+        List<Clause> resolvents = ResolutionTheoremProver.resolve(clause1, clause2);
+
+        assertTrue(resolvents.isEmpty());
+    }
+
 }
