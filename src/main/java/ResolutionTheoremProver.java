@@ -17,41 +17,54 @@ public class ResolutionTheoremProver {
         database.flushResolvents(); // clear resolvents from previous runs
         database.addClause(negativeCase);
 
-        // while there is no empty clause and new clauses can be generated
-        while (true) {
-            ArrayList<Clause> newClauses = new ArrayList<>();
+        while (!database.hasEmptyClause()) {
+            // get batch of unresolved clauses
+            ArrayList<Clause> unresolved = database.getUnresolvedClauses(Constants.UNRESOLVED_BATCH_SIZE);
 
-            // get unresolved clauses from database
-            ArrayList<Clause> clauseList = database.getUnresolvedClauses(Constants.UNRESOLVED_BATCH_SIZE);
-            Set<Clause> clauseSet = new HashSet<>(clauseList);
-            // if there are no clauses left, return true
-            if (clauseList.isEmpty()) {
+            // if there is nothing left to resolve we have failed
+            if (unresolved.isEmpty()) {
                 return false;
             }
 
-            // loop over all pairs of clauses and attempt to generate resolvents
-            for (int i = 0; i < clauseList.size(); i++) {
-                for (int j = i + 1; j < clauseList.size(); j++) {
-                    Clause clause1 = clauseList.get(i);
-                    Clause clause2 = clauseList.get(j);
+            // the max unresolved id (this will be the last in unresolved)
+            int startingId = unresolved.getLast().getId() - Constants.CLAUSE_BATCH_SIZE;
 
-                    List<Clause> resolvents = resolve(clause1, clause2);
+            // Use a set to maximize the amount of new things added to the database
+            Set<Clause> newResolutions = new HashSet<>();
 
-                    for (Clause resolvent : resolvents) {
-                        if (resolvent.isEmpty()) {
-                            return true; // Empty clause found, contradiction
-                        }
+            // iterate backwards from the latest resolved chosen, get clauses in chunks and resolve them
+            int databaseIndex = startingId;
+            while (databaseIndex >= -Constants.CLAUSE_BATCH_SIZE) {
+                ArrayList<Clause> batch_clauses = database.getClauses(databaseIndex, Constants.CLAUSE_BATCH_SIZE);
 
-                        if (!clauseSet.contains(resolvent)) {
-                            newClauses.add(resolvent);
+                // resolve unresolved against clauses from database
+                for (Clause unresolved_clause : unresolved) {
+                    for (Clause batch_clause : batch_clauses) {
+                        List<Clause> resolvents = resolve(unresolved_clause, batch_clause);
+                        newResolutions.addAll(resolvents);
+
+                        // Check if we found an empty clause
+                        for (Clause resolvent : resolvents) {
+                            if (resolvent.isEmpty()) {
+                                return true;
+                            }
                         }
                     }
                 }
-            }
-            database.setResolved(clauseList);
-            database.addClauses(newClauses);
 
+                // Save resolvents
+                database.addClauses(new ArrayList<>(newResolutions));
+                newResolutions.clear();
+
+                databaseIndex -= Constants.CLAUSE_BATCH_SIZE;
+            }
+
+            // Save any remaining resolvents
+            database.addClauses(new ArrayList<>(newResolutions));
+            database.setResolved(unresolved);
         }
+
+        return true;
     }
 
     public static List<Clause> resolve(Clause clause1, Clause clause2) {
@@ -109,7 +122,7 @@ public class ResolutionTheoremProver {
     }
 
     private static Clause createResolvent(Clause clause1, Clause clause2, Literal literal1, Literal literal2,
-            Map<String, String> substitution) {
+                                          Map<String, String> substitution) {
         Clause resolvent = new Clause();
 
         for (Literal literal : clause1.getLiterals()) {
