@@ -126,13 +126,13 @@ public class Database {
         try {
             Connection conn = DriverManager.getConnection(DB_PATH);
             PreparedStatement pstmt = conn
-                    .prepareStatement("SELECT id, clause FROM clauses WHERE resolved is FALSE LIMIT ? AND  id > ?");
-            pstmt.setInt(1, amount);
-            pstmt.setInt(2, lastRetrieved);
+                    .prepareStatement("SELECT id, clause FROM clauses WHERE resolved is FALSE AND id >= ? LIMIT ?");
+            pstmt.setInt(1, lastRetrieved);
+            pstmt.setInt(2, amount);
             ResultSet results = pstmt.executeQuery();
             ArrayList<Clause> clauses = new ArrayList<>();
             while (results.next()) {
-
+                System.out.println("Retrieved clause:" + results.getString("clause"));
                 Clause new_clause = ClauseParser.parseClause(results.getString("clause"));
                 new_clause.setId(results.getInt("id"));
                 // update the lastRetrieved to reflect the last clause id
@@ -201,6 +201,14 @@ public class Database {
             Connection conn = DriverManager.getConnection(DB_PATH);
             Statement stmt = conn.createStatement();
             stmt.executeUpdate("DELETE FROM clauses where starting_set = FALSE");
+
+            // reset starting set resolved to false
+            stmt.executeUpdate("UPDATE clauses SET resolved = FALSE WHERE starting_set = TRUE");
+
+            // Optimize and vacuum database
+            stmt.executeUpdate("VACUUM");
+            stmt.executeUpdate("PRAGMA optimize");
+            stmt.executeUpdate("PRAGMA wal_checkpoint(TRUNCATE)");
             stmt.close();
             conn.close();
         } catch (SQLException e) {
