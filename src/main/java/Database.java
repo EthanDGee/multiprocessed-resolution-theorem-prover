@@ -11,7 +11,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class Database {
 
-    private int lastRetrieved = 0;
+    private int lastRetrieved;
     private String DB_PATH;
     private ReentrantLock lock = new ReentrantLock();
 
@@ -30,17 +30,18 @@ public class Database {
         this.DB_PATH = dbPath;
 
         // create the clauses table
-        String sql = "CREATE TABLE IF NOT EXISTS clauses (id INTEGER PRIMARY KEY AUTOINCREMENT, clause TEXT UNIQUE, starting_set BOOLEAN DEFAULT FALSE,resolved BOOLEAN DEFAULT FALSE)";
-        clearClauses();
         try {
             Connection conn = DriverManager.getConnection(DB_PATH);
             Statement stmt = conn.createStatement();
-            stmt.executeUpdate(sql);
+            stmt.executeUpdate("CREATE TABLE IF NOT EXISTS clauses (id INTEGER PRIMARY KEY AUTOINCREMENT, clause TEXT UNIQUE, starting_set BOOLEAN DEFAULT FALSE,resolved BOOLEAN DEFAULT FALSE)");
+            // Enable WAL mode
+            stmt.executeUpdate("PRAGMA journal_mode=WAL");
             stmt.close();
             conn.close();
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
+        clearClauses();
 
         // fill clauses table with clauses
         String[] clauseStrings = new String[clauses.size()];
@@ -61,7 +62,7 @@ public class Database {
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
-
+        lastRetrieved = getFirstId();
     }
 
     public void addClause(Clause clause) {
@@ -149,7 +150,7 @@ public class Database {
         } catch (SQLException e) {
             System.out.println(e.getMessage());
             lock.unlock();
-            return null;
+            return new ArrayList<>();
         }
     }
 
@@ -205,8 +206,8 @@ public class Database {
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
-        // reset lastRetrieved index;
-        lastRetrieved = 0;
+        // reset lastRetrieved index to first index in the database;
+        lastRetrieved = getFirstId();
     }
 
     public void clearClauses() {
@@ -219,6 +220,21 @@ public class Database {
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
+    }
+
+    private int getFirstId() {
+        try {
+            Connection conn = DriverManager.getConnection(DB_PATH);
+            Statement stmt = conn.createStatement();
+            ResultSet result = stmt.executeQuery("SELECT id FROM clauses ORDER BY id LIMIT 1");
+            int firstId = result.getInt("id");
+            return firstId;
+
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+            return -1;
+        }
+
     }
 
     public int countClauses() {

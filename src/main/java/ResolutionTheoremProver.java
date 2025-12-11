@@ -136,7 +136,6 @@ public class ResolutionTheoremProver {
 
     public static void main(String[] args) {
 
-        // Example: Prove that from "P(x) => Q(x)" and "P(a)", we can derive "Q(a)"
         List<Clause> clauses = new ArrayList<>();
 
         // P(x) => Q(x) becomes ¬P(x) ∨ Q(x)

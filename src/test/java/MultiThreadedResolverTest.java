@@ -41,7 +41,7 @@ public class MultiThreadedResolverTest {
      */
 
     @Test
-    public void testSolveReturnsTrueWhenEmptyClauseExists() {
+    public void testProveReturnsTrueWhenEmptyClauseExists() {
         // Set up database behavior for this test
         when(mockDatabase.hasEmptyClause()).thenReturn(true);
 
@@ -61,7 +61,7 @@ public class MultiThreadedResolverTest {
         }
 
         // Assert that solve returns true
-        assertTrue(resolver.solve(mockNegatedClause));
+        assertTrue(resolver.prove(mockNegatedClause));
 
         // Verify database calls
         verify(mockDatabase).flushResolvents();
@@ -69,7 +69,7 @@ public class MultiThreadedResolverTest {
     }
 
     @Test
-    public void testSolveReturnsFalseWhenEmptyClauseDoesNotExist() {
+    public void testProveReturnsFalseWhenEmptyClauseDoesNotExist() {
         // Mock the database
         Database mockDatabase = mock(Database.class);
         when(mockDatabase.hasEmptyClause()).thenReturn(false);
@@ -91,7 +91,7 @@ public class MultiThreadedResolverTest {
         }
 
         // Assert that solve returns false
-        assertFalse(resolver.solve(mockNegatedClause));
+        assertFalse(resolver.prove(mockNegatedClause));
 
         // Verify database calls
         verify(mockDatabase).flushResolvents();
@@ -99,7 +99,7 @@ public class MultiThreadedResolverTest {
     }
 
     @Test
-    public void testSolveStartsThreads() {
+    public void testProveStartsThreads() {
         // Mock the database
         Database mockDatabase = mock(Database.class);
         when(mockDatabase.hasEmptyClause()).thenReturn(false);
@@ -125,7 +125,7 @@ public class MultiThreadedResolverTest {
         try (var mockedConstructor = Mockito.mockConstruction(Thread.class, (mock, context) -> {
             doNothing().when(mock).start();
         })) {
-            resolver.solve(mockNegatedClause);
+            resolver.prove(mockNegatedClause);
 
             // Verify that the number of threads corresponds to available processors
             int availableProcessors = Runtime.getRuntime().availableProcessors();
@@ -139,7 +139,7 @@ public class MultiThreadedResolverTest {
     }
 
     @Test
-    public void testSolveHandlesInterruptedException() {
+    public void testProveHandlesInterruptedException() {
         // Set up database behavior for this test
         when(mockDatabase.hasEmptyClause()).thenReturn(false);
 
@@ -165,7 +165,7 @@ public class MultiThreadedResolverTest {
             doNothing().when(mock).start();
             doThrow(new InterruptedException()).when(mock).join();
         })) {
-            assertDoesNotThrow(() -> resolver.solve(mockNegatedClause));
+            assertDoesNotThrow(() -> resolver.prove(mockNegatedClause));
 
             // Verify that threads attempted to join
             mockedConstructor.constructed().forEach(thread -> {
@@ -183,7 +183,7 @@ public class MultiThreadedResolverTest {
     }
 
     @Test
-    public void testSolveAddsNegatedClause() {
+    public void testProveAddsNegatedClause() {
         // Mock the database
         Database mockDatabase = mock(Database.class);
 
@@ -200,7 +200,7 @@ public class MultiThreadedResolverTest {
         }
 
         // Run solve method
-        resolver.solve(mockNegatedClause);
+        resolver.prove(mockNegatedClause);
 
         // Verify that the negated clause is added to the database
         verify(mockDatabase).addClause(mockNegatedClause);

@@ -9,15 +9,6 @@ import org.junit.jupiter.api.Test;
 
 public class ResolutionTheoremProverTest {
 
-    /**
-     * Test class for the ResolutionTheoremProver's `prove` method.
-     * <p>
-     * The `prove` method attempts to derive an empty clause (contradiction) from
-     * a list of input clauses and a negated target clause. When an empty clause
-     * is derived, the method returns true, signifying that the negated
-     * conclusion is unsatisfiable and thus the conclusion is provable.
-     */
-
     @Test
     public void testProveWithResolvableClausesReturnsTrue() {
         // Input clauses: ¬P(x) ∨ Q(x) and P(a)

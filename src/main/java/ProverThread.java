@@ -15,18 +15,14 @@ public class ProverThread implements Runnable {
 
     private Set<Clause> resolveArrayLists(ArrayList<Clause> unresolved, ArrayList<Clause> clauses) {
 
-        Set<Clause> newResolutions = new HashSet<Clause>();
+        Set<Clause> newResolutions = new HashSet<>();
 
+        // iterate over all clauses in unresolved and resolves them against clauses
         for (Clause clause1 : unresolved) {
             for (Clause clause2 : clauses) {
                 List<Clause> resolvents = ResolutionTheoremProver.resolve(clause1, clause2);
-
-                for (Clause resolvent : resolvents)
-
-                    newResolutions.add(resolvent);
-
+                newResolutions.addAll(resolvents);
             }
-
         }
 
         return newResolutions;
@@ -45,7 +41,7 @@ public class ProverThread implements Runnable {
 
             ArrayList<Clause> unresolved = database.getUnresolvedClauses(Constants.UNRESOLVED_BATCH_SIZE);
 
-            if (unresolved.size() == 0) {
+            if (unresolved.isEmpty()) {
                 try {
                     Thread.sleep(SLEEP_TIME);
                 } catch (InterruptedException e) {
