@@ -17,11 +17,12 @@ public class MultiThreadedResolver {
 
         // Create Thread Pool
         int availableProcessors = Runtime.getRuntime().availableProcessors();
+        boolean[] working = new boolean[availableProcessors];
         List<Thread> resolverThreads = new ArrayList<>();
 
         for (int i = 0; i < availableProcessors; i++) {
             // Creates a new Runnable
-            Runnable worker = new ProverThread(i, database); // adds the new thread
+            Runnable worker = new ProverThread(i, working, database); // adds the new thread
             resolverThreads.add(new Thread(worker));
             // runs the thread
             resolverThreads.get(i).start();
@@ -59,7 +60,7 @@ public class MultiThreadedResolver {
 
         // Negation of conclusion: ¬Mortal(Socrates)
         Clause negatedConclusion = new Clause();
-        negatedConclusion.addLiteral(new Literal("Mortal", "Socrates", false));
+        negatedConclusion.addLiteral(new Literal("Joseph", "Johnson", false));
 
         System.out.println("Attempting to prove: Mortal(Socrates)");
         System.out.println("Clauses:");

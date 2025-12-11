@@ -34,7 +34,7 @@ public class ProverThreadTest {
         // clause
 
         // Run the ProverThread
-        ProverThread proverThread = new ProverThread(1, mockDatabase);
+        ProverThread proverThread = new ProverThread(1, new boolean[1], mockDatabase);
         proverThread.run();
 
         // Verify that no operations are performed on the database since the empty
@@ -57,7 +57,7 @@ public class ProverThreadTest {
         Thread mockThread = spy(Thread.class);
 
         // Run the ProverThread
-        ProverThread proverThread = new ProverThread(1, mockDatabase);
+        ProverThread proverThread = new ProverThread(1,new boolean[1],  mockDatabase);
         proverThread.run();
 
         // Verify interactions with the mocked database
@@ -81,7 +81,7 @@ public class ProverThreadTest {
         // Mock the Thread to simulate an InterruptedException
         Thread.currentThread().interrupt();
 
-        ProverThread proverThread = new ProverThread(1, mockDatabase);
+        ProverThread proverThread = new ProverThread(1,new boolean[1],  mockDatabase);
 
         // Run the prover thread
         proverThread.run();

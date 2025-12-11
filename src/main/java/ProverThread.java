@@ -6,11 +6,22 @@ import java.util.Set;
 public class ProverThread implements Runnable {
 
     private final int id;
+    private final boolean[] working;
     private final Database database;
 
-    public ProverThread(int id, Database database) {
+    public ProverThread(int id, boolean[] working, Database database) {
         this.id = id;
+        this.working = working;
         this.database = database;
+    }
+
+    public boolean threadWorking() {
+        for (boolean working : working) {
+            if (working) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private Set<Clause> resolveArrayLists(ArrayList<Clause> unresolved, ArrayList<Clause> clauses) {
@@ -37,11 +48,12 @@ public class ProverThread implements Runnable {
         int SLEEP_MS = 500;
 
         // while there is no empty clause try and solve the problem
-        while (!database.hasEmptyClause()) {
+        while (!database.hasEmptyClause() & threadWorking()) {
 
             ArrayList<Clause> unresolved = database.getUnresolvedClauses(Constants.UNRESOLVED_BATCH_SIZE);
 
             if (unresolved.isEmpty()) {
+                working[id] = false;
                 try {
                     Thread.sleep(SLEEP_MS);
                 } catch (InterruptedException e) {
@@ -50,7 +62,7 @@ public class ProverThread implements Runnable {
                 }
                 continue;
             }
-
+            working[id] = true;
             // the max unresolved id (this will be the last in unresolved)
             int startingId = unresolved.getLast().getId() - Constants.CLAUSE_BATCH_SIZE;
 
