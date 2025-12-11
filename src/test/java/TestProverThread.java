@@ -1,19 +1,12 @@
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 public class TestProverThread {
 
@@ -35,9 +28,10 @@ public class TestProverThread {
         // clause
 
         AtomicBoolean isRunning = new AtomicBoolean(true);
+        AtomicBoolean hasWork = new AtomicBoolean(true);
 
         // Run the ProverThread
-        ProverThread proverThread = new ProverThread(1, new boolean[1], mockDatabase, isRunning);
+        ProverThread proverThread = new ProverThread(1, new boolean[1], mockDatabase, isRunning, hasWork);
         proverThread.run();
 
         // Verify that no operations are performed on the database since the empty
@@ -56,12 +50,13 @@ public class TestProverThread {
 
 
         AtomicBoolean isRunning = new AtomicBoolean(true);
+        AtomicBoolean hasWork = new AtomicBoolean(true);
 
         // Spy on Thread to verify sleep is called
         Thread mockThread = spy(Thread.class);
 
         // Run the ProverThread
-        ProverThread proverThread = new ProverThread(1,new boolean[1],  mockDatabase, isRunning);
+        ProverThread proverThread = new ProverThread(1, new boolean[1], mockDatabase, isRunning, hasWork);
         proverThread.run();
 
         // Verify interactions with the mocked database
@@ -86,8 +81,9 @@ public class TestProverThread {
         Thread.currentThread().interrupt();
 
         AtomicBoolean isRunning = new AtomicBoolean(true);
+        AtomicBoolean hasWork = new AtomicBoolean(true);
 
-        ProverThread proverThread = new ProverThread(1,new boolean[1],  mockDatabase, isRunning);
+        ProverThread proverThread = new ProverThread(1, new boolean[1], mockDatabase, isRunning, hasWork);
 
         // Run the prover thread
         proverThread.run();

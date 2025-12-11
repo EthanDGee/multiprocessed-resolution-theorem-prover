@@ -1,5 +1,7 @@
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 
 public class ResolutionExample {
     public static void main(String[] args) {
@@ -23,7 +25,7 @@ public class ResolutionExample {
         clause2.addLiteral(new Literal("Mortal", "x", true));
         clauses.add(clause2);
 
-        ResolutionTheoremProver prover = new ResolutionTheoremProver(clauses);
+        MultiThreadedResolver prover = new MultiThreadedResolver(clauses);
 
         // Negation of conclusion: ¬Mortal(Socrates)
         Clause negatedConclusion = new Clause();
@@ -115,7 +117,7 @@ public class ResolutionExample {
         c12.addLiteral(new Literal("HasFun", "x", true));
         clauses.add(c12);
 
-        ResolutionTheoremProver prover = new ResolutionTheoremProver(clauses);
+        MultiThreadedResolver prover = new MultiThreadedResolver(clauses);
 
         // Negation of conclusion: ¬Happy(Jack)
         Clause negatedConclusion = new Clause();
@@ -145,7 +147,7 @@ public class ResolutionExample {
         clauses.add(p1);
 
         // Distractor chain 1: Q1(x) -> ... -> Q10(x)
-        for (int i = 1; i < 10; i++) {
+        for (int i = 1; i < 300; i++) {
             Clause clause = new Clause();
             clause.addLiteral(new Literal("Q" + i, "x", false));
             clause.addLiteral(new Literal("Q" + (i + 1), "x", true));
@@ -156,7 +158,7 @@ public class ResolutionExample {
         clauses.add(q1);
 
         // Distractor chain 2: R1(x) -> ... -> R20(x)
-        for (int i = 1; i < 20; i++) {
+        for (int i = 1; i < 200; i++) {
             Clause clause = new Clause();
             clause.addLiteral(new Literal("R" + i, "x", false));
             clause.addLiteral(new Literal("R" + (i + 1), "x", true));
@@ -166,7 +168,10 @@ public class ResolutionExample {
         r1.addLiteral(new Literal("R1", "BigTest", true));
         clauses.add(r1);
 
-        ResolutionTheoremProver prover = new ResolutionTheoremProver(clauses);
+        // Shuffle all clauses randomly to better demonstrate a more complex problem
+        Collections.shuffle(clauses, new Random(33));
+
+        MultiThreadedResolver prover = new MultiThreadedResolver(clauses);
 
         // Negation of conclusion: ¬P50(BigTest)
         Clause negatedConclusion = new Clause();

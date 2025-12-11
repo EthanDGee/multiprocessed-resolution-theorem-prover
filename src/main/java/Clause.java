@@ -1,9 +1,4 @@
-import java.util.HashSet;
-import java.util.Set;
-import java.util.Objects;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Collections;
+import java.util.*;
 
 public class Clause {
 
@@ -55,6 +50,11 @@ public class Clause {
 
     public int size() {
         return this.literals.size();
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.literals);
     }
 
     @Override

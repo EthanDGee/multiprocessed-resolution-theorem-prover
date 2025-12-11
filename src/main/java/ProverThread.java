@@ -10,21 +10,24 @@ public class ProverThread implements Runnable {
     private final boolean[] working;
     private final Database database;
     private final AtomicBoolean emptyClauseFound;
+    private final AtomicBoolean databaseHasWork;
 
-    public ProverThread(int id, boolean[] working, Database database, AtomicBoolean emptyClauseFound) {
+    public ProverThread(int id, boolean[] working, Database database, AtomicBoolean emptyClauseFound, AtomicBoolean databaseHasWork) {
         this.id = id;
         this.working = working;
         this.database = database;
         this.emptyClauseFound = emptyClauseFound;
+        this.databaseHasWork = databaseHasWork;
     }
 
     public boolean threadWorking() {
-        for (boolean working : working) {
-            if (working) {
-                return true;
-            }
-        }
-        return false;
+//        for (boolean working : working) {
+//            if (working) {
+//                return true;
+//            }
+//        }
+//        return false;
+        return true;
     }
 
     private Set<Clause> resolveArrayLists(ArrayList<Clause> unresolved, ArrayList<Clause> clauses) {
@@ -56,23 +59,22 @@ public class ProverThread implements Runnable {
     }
 
     public void run() {
-        int SLEEP_MS = 500;
-
         // while there is no empty clause try and solve the problem
         while (!emptyClauseFound.get() && threadWorking()) {
 
+            //skip if the database doesn't have any work
+            if (!databaseHasWork.get()) {
+                continue;
+            }
+            System.out.println("Found Work " + id);
             ArrayList<Clause> unresolved = database.getUnresolvedClauses(Constants.UNRESOLVED_BATCH_SIZE);
 
             if (unresolved.isEmpty()) {
                 working[id] = false;
-                try {
-                    Thread.sleep(SLEEP_MS);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
                 continue;
             }
+
+            System.out.println("Working on unresolved on  Thread: " + id);
             working[id] = true;
             // the max unresolved id (this will be the last in unresolved)
             int startingId = unresolved.getLast().getId() - Constants.CLAUSE_BATCH_SIZE;

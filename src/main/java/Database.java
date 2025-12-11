@@ -1,12 +1,8 @@
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class Database {
@@ -15,6 +11,9 @@ public class Database {
     private String DB_PATH;
     private ReentrantLock lock = new ReentrantLock();
     private Connection conn;
+    public AtomicBoolean hasWork = new AtomicBoolean(false);
+    // TODO: Add a hasWork atomicBoolean triggered by there being clauses in the database that have not been resolved
+    private int lastId;
 
     public Database(List<Clause> clauses) {
         this(clauses, "jdbc:sqlite:db.sqlite3");
@@ -34,7 +33,12 @@ public class Database {
             this.conn = DriverManager.getConnection(DB_PATH);
             // create the clauses table
             try (Statement stmt = conn.createStatement()) {
-                stmt.executeUpdate("CREATE TABLE IF NOT EXISTS clauses (id INTEGER PRIMARY KEY AUTOINCREMENT, clause TEXT UNIQUE, starting_set BOOLEAN DEFAULT FALSE,resolved BOOLEAN DEFAULT FALSE)");
+                stmt.executeUpdate(
+                        "CREATE TABLE IF NOT EXISTS clauses" +
+                                "(id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                                "clause TEXT UNIQUE, " +
+                                "starting_set BOOLEAN DEFAULT FALSE," +
+                                "resolved BOOLEAN DEFAULT FALSE)");
                 // Enable WAL mode
                 stmt.executeUpdate("PRAGMA journal_mode=WAL");
             }
@@ -60,6 +64,7 @@ public class Database {
             System.out.println(e.getMessage());
         }
         lastRetrieved = getFirstId();
+        lastId = getLastId();
     }
 
     public void close() {
@@ -72,7 +77,6 @@ public class Database {
         }
     }
 
-
     public void addClause(Clause clause) {
         String clauseString = clause.toString();
 
@@ -82,6 +86,8 @@ public class Database {
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
+        lastId++;
+        hasWork.set(true);
     }
 
     public void addClauses(List<Clause> clauses) {
@@ -92,6 +98,7 @@ public class Database {
                 pstmt.addBatch();
             }
             pstmt.executeBatch();
+            lastId += clauses.size();
             conn.commit();
         } catch (SQLException e) {
             System.out.println(e.getMessage());
@@ -153,6 +160,8 @@ public class Database {
         // update the lastRetrieved to reflect the last clause id
         if (!clauses.isEmpty()) {
             lastRetrieved = clauses.getLast().getId() + 1;
+            // if there are more clauses to be processed, set hasWork to true
+            hasWork.set(lastRetrieved < lastId);
         }
         return clauses;
     }
@@ -212,6 +221,8 @@ public class Database {
         }
         // reset lastRetrieved index to first index in the database;
         lastRetrieved = getFirstId();
+        lastId = getLastId();
+        hasWork.set(true);
     }
 
     public void clearClauses() {
@@ -232,6 +243,19 @@ public class Database {
             System.out.println(e.getMessage());
         }
         return -1;
+    }
+
+    private int getLastId() {
+        try (Statement stmt = conn.createStatement();
+             ResultSet result = stmt.executeQuery("SELECT id FROM clauses ORDER BY id DESC  LIMIT 1")) {
+            if (result.next()) {
+                return result.getInt("id");
+            }
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+        return -1;
+
     }
 
     public int countClauses() {
