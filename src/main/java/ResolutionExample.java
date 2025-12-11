@@ -5,12 +5,15 @@ import java.util.Random;
 
 public class ResolutionExample {
     public static void main(String[] args) {
-        runSimpleExample();
-        runModerateExample();
-        runLargeExample();
+        Example example = new ResolutionExample().largeExample();
+        try {
+            example.runExample();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
-    public static void runSimpleExample() {
+    public Example simpleExample() {
         System.out.println("--- Running Simple Example ---");
         List<Clause> clauses = new ArrayList<>();
 
@@ -25,25 +28,15 @@ public class ResolutionExample {
         clause2.addLiteral(new Literal("Mortal", "x", true));
         clauses.add(clause2);
 
-        MultiThreadedResolver prover = new MultiThreadedResolver(clauses);
 
         // Negation of conclusion: ¬Mortal(Socrates)
         Clause negatedConclusion = new Clause();
         negatedConclusion.addLiteral(new Literal("Mortal", "Socrates", false));
 
-        System.out.println("Attempting to prove: Mortal(Socrates)");
-        System.out.println("Clauses:");
-        for (int i = 0; i < clauses.size(); i++) {
-            System.out.println("  " + (i + 1) + ": " + clauses.get(i));
-        }
-        System.out.println("Negated Conclusion: " + negatedConclusion);
-
-        boolean result = prover.prove(negatedConclusion);
-        System.out.println("\nProof " + (result ? "succeeded" : "failed"));
-        System.out.println("----------------------------\n");
+        return new Example(clauses, negatedConclusion);
     }
 
-    public static void runModerateExample() {
+    public Example moderateExample() {
         System.out.println("--- Running Moderate Example (12 clauses) ---");
         List<Clause> clauses = new ArrayList<>();
 
@@ -117,22 +110,16 @@ public class ResolutionExample {
         c12.addLiteral(new Literal("HasFun", "x", true));
         clauses.add(c12);
 
-        MultiThreadedResolver prover = new MultiThreadedResolver(clauses);
 
         // Negation of conclusion: ¬Happy(Jack)
         Clause negatedConclusion = new Clause();
         negatedConclusion.addLiteral(new Literal("Happy", "Jack", false));
 
-        System.out.println("Attempting to prove: Happy(Jack)");
-        System.out.println("Negated Conclusion: " + negatedConclusion);
+        return new Example(clauses, negatedConclusion);
 
-        boolean result = prover.prove(negatedConclusion);
-        System.out.println("\nProof " + (result ? "succeeded" : "failed"));
-        System.out.println("-------------------------------------------\n");
     }
 
-    public static void runLargeExample() {
-        System.out.println("--- Running Large Example (80 clauses) ---");
+    public Example largeExample() {
         List<Clause> clauses = new ArrayList<>();
 
         // Main chain: P1(x) -> P2(x) -> ... -> P50(x)
@@ -171,22 +158,56 @@ public class ResolutionExample {
         // Shuffle all clauses randomly to better demonstrate a more complex problem
         Collections.shuffle(clauses, new Random(33));
 
-        MultiThreadedResolver prover = new MultiThreadedResolver(clauses);
 
         // Negation of conclusion: ¬P50(BigTest)
         Clause negatedConclusion = new Clause();
         negatedConclusion.addLiteral(new Literal("P50", "BigTest", false));
-
-        System.out.println("Attempting to prove: P50(BigTest)");
-        System.out.println("Total clauses in KB: " + clauses.size());
-        System.out.println("Negated Conclusion: " + negatedConclusion);
-
-        boolean result = prover.prove(negatedConclusion);
-        System.out.println("\nProof " + (result ? "succeeded" : "failed"));
-        System.out.println("----------------------------------------\n");
+        return new Example(clauses, negatedConclusion);
     }
 
-    public static void runMassiveExample() {
-        // Implementation needed
+    public class Example {
+        List<Clause> clauses;
+        Clause negation;
+
+        public Example(List<Clause> clauses, Clause negation) {
+            this.clauses = clauses;
+            this.negation = negation;
+        }
+
+        public void runExample() throws InterruptedException {
+            System.out.println(this);
+
+            // Run ResolutionTheoremProver
+            long startTimeSingle = System.currentTimeMillis();
+            ResolutionTheoremProver singleResolver = new ResolutionTheoremProver(clauses);
+            boolean singleResult = singleResolver.prove(negation);
+            long endTimeSingle = System.currentTimeMillis();
+            long singleTime = endTimeSingle - startTimeSingle;
+
+            // Run MultiThreadResolver
+            long startTimeMulti = System.currentTimeMillis();
+            MultiThreadedResolver multiResolver = new MultiThreadedResolver(clauses);
+            boolean multiResult = multiResolver.prove(negation);
+            long endTimeMulti = System.currentTimeMillis();
+            long multiTime = endTimeMulti - startTimeMulti;
+
+
+            // Print results
+            System.out.println("\nResults:");
+            System.out.println("MultiThreadResolver: " + multiResult + " (Time: " + multiTime + "ms)");
+            System.out.println("ResolutionTheoremProver: " + singleResult + " (Time: " + singleTime + "ms)");
+            System.out.println("Difference: " + Math.abs(multiTime - singleTime) + "ms");
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("Clauses: \n");
+            for (int i = 0; i < clauses.size(); i++) {
+                sb.append("  ").append(i + 1).append(": ").append(clauses.get(i)).append("\n");
+            }
+            sb.append("Negation").append(negation);
+            return sb.toString();
+        }
     }
 }
