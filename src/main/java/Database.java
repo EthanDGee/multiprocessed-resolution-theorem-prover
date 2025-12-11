@@ -70,7 +70,7 @@ public class Database {
 
         try {
             Connection conn = DriverManager.getConnection(DB_PATH);
-            PreparedStatement stmt = conn.prepareStatement("INSERT INTO clauses (clause) VALUES (?)");
+            PreparedStatement stmt = conn.prepareStatement("INSERT OR IGNORE INTO clauses (clause) VALUES (?)");
             stmt.setString(1, clauseString);
             stmt.executeUpdate();
             stmt.close();
@@ -79,19 +79,16 @@ public class Database {
             System.out.println(e.getMessage());
         }
     }
-
+    
     public void addClauses(List<Clause> clauses) {
-        try {
-            Connection conn = DriverManager.getConnection(DB_PATH);
-            PreparedStatement pstmt = conn.prepareStatement("INSERT INTO clauses (clause) VALUES (?)");
+        try (Connection conn = DriverManager.getConnection(DB_PATH);
+             PreparedStatement pstmt = conn.prepareStatement("INSERT OR IGNORE INTO clauses (clause) VALUES (?)")) {
 
             for (Clause clause : clauses) {
                 pstmt.setString(1, clause.toString());
                 pstmt.addBatch();
             }
             pstmt.executeBatch();
-            pstmt.close();
-            conn.close();
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
