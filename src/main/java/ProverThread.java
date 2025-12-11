@@ -29,12 +29,12 @@ public class ProverThread implements Runnable {
     }
 
     private void saveResolvents(Set<Clause> resolvents) {
-        database.addClauses((List<Clause>) resolvents);
+        database.addClauses(new ArrayList<>(resolvents));
         resolvents.clear();
     }
 
     public void run() {
-        int SLEEP_TIME = 500;
+        int SLEEP_MS = 500;
 
         // while there is no empty clause try and solve the problem
         while (!database.hasEmptyClause()) {
@@ -43,7 +43,7 @@ public class ProverThread implements Runnable {
 
             if (unresolved.isEmpty()) {
                 try {
-                    Thread.sleep(SLEEP_TIME);
+                    Thread.sleep(SLEEP_MS);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;
@@ -52,7 +52,7 @@ public class ProverThread implements Runnable {
             }
 
             // the max unresolved id (this will be the last in unresolved)
-            int startingId = unresolved.get(unresolved.size() - 1).getId() - Constants.CLAUSE_BATCH_SIZE;
+            int startingId = unresolved.getLast().getId() - Constants.CLAUSE_BATCH_SIZE;
 
             // A set is chosen to maxize the amount of new thigns added to the database. The
             // database has a Unique constraint
@@ -62,12 +62,15 @@ public class ProverThread implements Runnable {
 
             // iterate backwords from the latest resolved chosen, get clauses in chunks and
             // resolve them
-            for (int databaseIndex = startingId; startingId <= -Constants.CLAUSE_BATCH_SIZE; databaseIndex -= Constants.CLAUSE_BATCH_SIZE) {
-                ArrayList<Clause> clauses = database.getClauses(databaseIndex, Constants.CLAUSE_BATCH_SIZE);
+            int databaseIndex = startingId;
 
-                newResolutions.addAll(resolveArrayLists(unresolved, clauses));
+            while (databaseIndex >= -Constants.CLAUSE_BATCH_SIZE) {
+                ArrayList<Clause> batch_clauses = database.getClauses(databaseIndex, Constants.CLAUSE_BATCH_SIZE);
+                newResolutions.addAll(resolveArrayLists(unresolved, batch_clauses));
 
-                // once we reach the threshold save resolvents and clear cache
+                databaseIndex -= Constants.CLAUSE_BATCH_SIZE;
+
+                // once newResolutions reaches the save threshold, save resolvents and clear
                 if (newResolutions.size() >= Constants.RESOLVENT_SAVE_THRESHOLD) {
                     saveResolvents(newResolutions);
                 }
