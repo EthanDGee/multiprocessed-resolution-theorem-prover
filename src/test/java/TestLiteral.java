@@ -1,7 +1,7 @@
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class LiteralTest {
+public class TestLiteral {
 
     @Test
     public void testConstructorAndGetters() {

@@ -4,7 +4,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class ClauseParserTest {
+public class TestClauseParser {
 
     @Test
     public void testParsePositiveLiteral() {

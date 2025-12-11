@@ -142,10 +142,6 @@ public class Database {
                     System.out.println("Retrieved clause:" + results.getString("clause"));
                     Clause new_clause = ClauseParser.parseClause(results.getString("clause"));
                     new_clause.setId(results.getInt("id"));
-                    // update the lastRetrieved to reflect the last clause id
-                    if (lastRetrieved < new_clause.getId())
-                        lastRetrieved = new_clause.getId();
-
                     clauses.add(new_clause);
                 }
             }
@@ -153,6 +149,10 @@ public class Database {
             System.out.println(e.getMessage());
         } finally {
             lock.unlock();
+        }
+        // update the lastRetrieved to reflect the last clause id
+        if (!clauses.isEmpty()) {
+            lastRetrieved = clauses.getLast().getId() + 1;
         }
         return clauses;
     }

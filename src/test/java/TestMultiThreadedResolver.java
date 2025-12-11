@@ -9,7 +9,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class MultiThreadedResolverTest {
+public class TestMultiThreadedResolver {
 
     private static final String DB_FILE = "test.sqlite3";
     private static final String DB_WAL_FILE = DB_FILE + "-wal";

@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class ProverThreadTest {
+public class TestProverThread {
 
     /**
      * Test class for the ProverThread class.

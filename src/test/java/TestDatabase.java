@@ -10,7 +10,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class DatabaseTest {
+public class TestDatabase {
 
     private static final String TEST_DB_PATH = "jdbc:sqlite:test.sqlite3";
     private static final String TEST_DB_FILE = "test.sqlite3";
@@ -167,18 +167,24 @@ public class DatabaseTest {
     public void testGetUnresolvedClauses() {
         Clause clause3 = ClauseParser.parseClause("A(x)");
         database.addClause(clause3);
+        Clause clause4 = ClauseParser.parseClause("B(y)");
+        database.addClause(clause4);
 
         // lastRetrieved is initialized to the ID of the first clause (ID=1).
-        // The query uses `id > lastRetrieved`, so it will start fetching from ID=2.
-        ArrayList<Clause> unresolved1 = database.getUnresolvedClauses(2);
-        assertEquals(2, unresolved1.size());
+        ArrayList<Clause> unresolved1 = database.getUnresolvedClauses(3);
+        assertEquals(3, unresolved1.size());
         assertTrue(unresolved1.contains(clause2));
         assertTrue(unresolved1.contains(clause3));
+        // clause4 is not returned because it is out of the range
+        assertFalse(unresolved1.contains(clause4));
 
         // `lastRetrieved` is now the ID of clause3 (ID=3).
-        // Another call should yield no results.
-        ArrayList<Clause> unresolved2 = database.getUnresolvedClauses(2);
-        assertTrue(unresolved2.isEmpty());
+        // Another call should yield clause 4
+        ArrayList<Clause> unresolved2 = database.getUnresolvedClauses(1);
+        for (Clause clause : unresolved2) {
+            System.out.println(clause);
+        }
+        assertTrue(unresolved2.contains(clause4));
     }
 
     @Test
@@ -196,7 +202,7 @@ public class DatabaseTest {
         // lastRetrieved is at ID 1. Query will be for id > 1.
         // It should skip resolved clause2 (ID 2) and return clause3 (ID 3).
         ArrayList<Clause> unresolved = database.getUnresolvedClauses(5);
-        assertEquals(1, unresolved.size());
+        assertEquals(2, unresolved.size());
         assertTrue(unresolved.contains(clause3));
     }
 
