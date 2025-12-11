@@ -17,58 +17,39 @@ public class ResolutionTheoremProver {
         database.close();
     }
 
-    public boolean prove(Clause negativeCase) {
-        database.flushResolvents(); // clear resolvents from previous runs
-        database.addClause(negativeCase);
+    public static void main(String[] args) throws InterruptedException {
 
-        while (!database.hasEmptyClause()) {
-            // get batch of unresolved clauses
-            ArrayList<Clause> unresolved = database.getUnresolvedClauses(Constants.UNRESOLVED_BATCH_SIZE);
+        List<Clause> clauses = new ArrayList<>();
 
-            // if there is nothing left to resolve we have failed
-            if (unresolved.isEmpty()) {
-                return false;
+        // P(x) => Q(x) becomes ¬P(x) ∨ Q(x)
+        Clause clause1 = new Clause();
+        clause1.addLiteral(new Literal("P", "x", false));
+        clause1.addLiteral(new Literal("Q", "x", true));
+        clauses.add(clause1);
+
+        // P(a)
+        Clause clause2 = new Clause();
+        clause2.addLiteral(new Literal("P", "a", true));
+        clauses.add(clause2);
+
+        ResolutionTheoremProver prover = new ResolutionTheoremProver(clauses);
+
+        try {
+            // Negation of conclusion: ¬Q(a)
+            Clause negatedConclusion = new Clause();
+            negatedConclusion.addLiteral(new Literal("Q", "a", false));
+
+            System.out.println("Attempting to prove: From P(x)=>Q(x) and P(a), derive Q(a)");
+            System.out.println("Clauses:");
+            for (int i = 0; i < clauses.size(); i++) {
+                System.out.println("  " + (i + 1) + ": " + clauses.get(i));
             }
 
-            // the max unresolved id (this will be the last in unresolved)
-            int startingId = unresolved.getLast().getId() - Constants.CLAUSE_BATCH_SIZE;
-
-            // Use a set to maximize the amount of new things added to the database
-            Set<Clause> newResolutions = new HashSet<>();
-
-            // iterate backwards from the latest resolved chosen, get clauses in chunks and resolve them
-            int databaseIndex = startingId;
-            while (databaseIndex >= -Constants.CLAUSE_BATCH_SIZE) {
-                ArrayList<Clause> batch_clauses = database.getClauses(databaseIndex, Constants.CLAUSE_BATCH_SIZE);
-
-                // resolve unresolved against clauses from database
-                for (Clause unresolved_clause : unresolved) {
-                    for (Clause batch_clause : batch_clauses) {
-                        List<Clause> resolvents = resolve(unresolved_clause, batch_clause);
-                        newResolutions.addAll(resolvents);
-
-                        // Check if we found an empty clause
-                        for (Clause resolvent : resolvents) {
-                            if (resolvent.isEmpty()) {
-                                return true;
-                            }
-                        }
-                    }
-                }
-
-                // Save resolvents
-                database.addClauses(new ArrayList<>(newResolutions));
-                newResolutions.clear();
-
-                databaseIndex -= Constants.CLAUSE_BATCH_SIZE;
-            }
-
-            // Save any remaining resolvents
-            database.addClauses(new ArrayList<>(newResolutions));
-            database.setResolved(unresolved);
+            boolean result = prover.prove(negatedConclusion);
+            System.out.println("\nProof " + (result ? "succeeded" : "failed"));
+        } finally {
+            prover.closeDatabase();
         }
-
-        return true;
     }
 
     public static List<Clause> resolve(Clause clause1, Clause clause2) {
@@ -151,39 +132,58 @@ public class ResolutionTheoremProver {
         return new Literal(literal.getPredicate(), newArg, literal.isPositive());
     }
 
-    public static void main(String[] args) {
+    public boolean prove(Clause negativeCase) throws InterruptedException {
+        database.flushResolvents(); // clear resolvents from previous runs
+        database.addClause(negativeCase);
 
-        List<Clause> clauses = new ArrayList<>();
+        while (!database.hasEmptyClause()) {
+            // get batch of unresolved clauses
+            ArrayList<Clause> unresolved = database.getUnresolvedClauses(Constants.UNRESOLVED_BATCH_SIZE);
 
-        // P(x) => Q(x) becomes ¬P(x) ∨ Q(x)
-        Clause clause1 = new Clause();
-        clause1.addLiteral(new Literal("P", "x", false));
-        clause1.addLiteral(new Literal("Q", "x", true));
-        clauses.add(clause1);
-
-        // P(a)
-        Clause clause2 = new Clause();
-        clause2.addLiteral(new Literal("P", "a", true));
-        clauses.add(clause2);
-
-        ResolutionTheoremProver prover = new ResolutionTheoremProver(clauses);
-
-        try {
-            // Negation of conclusion: ¬Q(a)
-            Clause negatedConclusion = new Clause();
-            negatedConclusion.addLiteral(new Literal("Q", "a", false));
-
-            System.out.println("Attempting to prove: From P(x)=>Q(x) and P(a), derive Q(a)");
-            System.out.println("Clauses:");
-            for (int i = 0; i < clauses.size(); i++) {
-                System.out.println("  " + (i + 1) + ": " + clauses.get(i));
+            // if there is nothing left to resolve we have failed
+            if (unresolved.isEmpty()) {
+                return false;
             }
 
-            boolean result = prover.prove(negatedConclusion);
-            System.out.println("\nProof " + (result ? "succeeded" : "failed"));
-        } finally {
-            prover.closeDatabase();
+            // the max unresolved id (this will be the last in unresolved)
+            int startingId = unresolved.getLast().getId() - Constants.CLAUSE_BATCH_SIZE;
+
+            // Use a set to maximize the amount of new things added to the database
+            Set<Clause> newResolutions = new HashSet<>();
+
+            // iterate backwards from the latest resolved chosen, get clauses in chunks and resolve them
+            int databaseIndex = startingId;
+            while (databaseIndex >= -Constants.CLAUSE_BATCH_SIZE) {
+                ArrayList<Clause> batch_clauses = database.getClauses(databaseIndex, Constants.CLAUSE_BATCH_SIZE);
+
+                // resolve unresolved against clauses from database
+                for (Clause unresolved_clause : unresolved) {
+                    for (Clause batch_clause : batch_clauses) {
+                        List<Clause> resolvents = resolve(unresolved_clause, batch_clause);
+                        newResolutions.addAll(resolvents);
+
+                        // Check if we found an empty clause
+                        for (Clause resolvent : resolvents) {
+                            if (resolvent.isEmpty()) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+
+                // Save resolvents
+                database.addClauses(new ArrayList<>(newResolutions));
+                newResolutions.clear();
+
+                databaseIndex -= Constants.CLAUSE_BATCH_SIZE;
+            }
+
+            // Save any remaining resolvents
+            database.addClauses(new ArrayList<>(newResolutions));
+            database.setResolved(unresolved);
         }
+
+        return true;
     }
 
 }

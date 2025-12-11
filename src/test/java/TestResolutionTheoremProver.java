@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 public class TestResolutionTheoremProver {
 
     @Test
-    public void testProveWithResolvableClausesReturnsTrue() {
+    public void testProveWithResolvableClausesReturnsTrue() throws InterruptedException {
         // Input clauses: ¬P(x) ∨ Q(x) and P(a)
         List<Clause> clauses = new ArrayList<>();
         Clause clause1 = new Clause();
@@ -34,7 +34,7 @@ public class TestResolutionTheoremProver {
     }
 
     @Test
-    public void testProveWithUnresolvableClausesReturnsFalse() {
+    public void testProveWithUnresolvableClausesReturnsFalse() throws InterruptedException {
         // Input clauses: ¬P(x) ∨ Q(x)
         List<Clause> clauses = new ArrayList<>();
         Clause clause1 = new Clause();
@@ -54,7 +54,7 @@ public class TestResolutionTheoremProver {
     }
 
     @Test
-    public void testProveWithEmptyClauseReturnsTrue() {
+    public void testProveWithEmptyClauseReturnsTrue() throws InterruptedException {
         // Input clauses: ¬P(a) ∨ Q(a) and P(a)
         List<Clause> clauses = new ArrayList<>();
         Clause clause1 = new Clause();
@@ -78,7 +78,7 @@ public class TestResolutionTheoremProver {
     }
 
     @Test
-    public void testProveWithComplexResolvableCaseReturnsTrue() {
+    public void testProveWithComplexResolvableCaseReturnsTrue() throws InterruptedException {
         // Input clauses:
         // 1. Q(x) ∨ ¬R(x)
         // 2. R(a)

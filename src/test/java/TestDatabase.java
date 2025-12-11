@@ -1,6 +1,8 @@
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -8,7 +10,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class TestDatabase {
 
@@ -90,7 +94,8 @@ public class TestDatabase {
     public void testAddClause_Duplicate() {
         int initialCount = database.countClauses();
         // The UNIQUE constraint in the DB schema should prevent duplicates.
-        // The current implementation prints an error but doesn't throw, which is acceptable.
+        // The current implementation prints an error but doesn't throw, which is
+        // acceptable.
         database.addClause(clause1);
         assertEquals(initialCount, database.countClauses());
     }
@@ -99,8 +104,7 @@ public class TestDatabase {
     public void testAddClauses() {
         List<Clause> newClauses = Arrays.asList(
                 ClauseParser.parseClause("S(a)"),
-                ClauseParser.parseClause("T(b)")
-        );
+                ClauseParser.parseClause("T(b)"));
         int initialCount = database.countClauses();
         database.addClauses(newClauses);
         assertEquals(initialCount + 2, database.countClauses());
@@ -120,8 +124,7 @@ public class TestDatabase {
     public void testAddClauses_WithDuplicatesInBatch() {
         List<Clause> newClauses = Arrays.asList(
                 ClauseParser.parseClause("S(a)"),
-                ClauseParser.parseClause("S(a)")
-        );
+                ClauseParser.parseClause("S(a)"));
         int initialCount = database.countClauses();
         database.addClauses(newClauses);
         assertEquals(initialCount + 1, database.countClauses());
@@ -164,31 +167,55 @@ public class TestDatabase {
     }
 
     @Test
-    public void testGetUnresolvedClauses() {
+    public void testGetUnresolvedClauses() throws InterruptedException {
         Clause clause3 = ClauseParser.parseClause("A(x)");
         database.addClause(clause3);
         Clause clause4 = ClauseParser.parseClause("B(y)");
         database.addClause(clause4);
 
         // lastRetrieved is initialized to the ID of the first clause (ID=1).
+        // First getUnresolvedClauses call should retrieve clause1, clause2, clause3
         ArrayList<Clause> unresolved1 = database.getUnresolvedClauses(3);
         assertEquals(3, unresolved1.size());
+        assertTrue(unresolved1.contains(clause1));
         assertTrue(unresolved1.contains(clause2));
         assertTrue(unresolved1.contains(clause3));
-        // clause4 is not returned because it is out of the range
-        assertFalse(unresolved1.contains(clause4));
 
-        // `lastRetrieved` is now the ID of clause3 (ID=3).
         // Another call should yield clause 4
         ArrayList<Clause> unresolved2 = database.getUnresolvedClauses(1);
-        for (Clause clause : unresolved2) {
-            System.out.println(clause);
-        }
+        assertEquals(1, unresolved2.size());
         assertTrue(unresolved2.contains(clause4));
     }
 
     @Test
-    public void testSetResolved() {
+    public void testGetUnresolvedClauses_BlocksWhenNoWork() throws InterruptedException {
+        // Initially there are 2 clauses. We retrieve them all
+        database.getUnresolvedClauses(5); // This will advance lastRetrieved past existing clauses
+
+        // Create a separate thread to call getUnresolvedClauses, which should block
+        Thread t = new Thread(() -> {
+            try {
+                database.getUnresolvedClauses(1);
+                fail("Should have blocked if no new clauses added");
+            } catch (InterruptedException e) {
+                // Expected behavior when interrupted
+                assertTrue(Thread.currentThread().isInterrupted());
+            }
+        });
+
+        t.start();
+        Thread.sleep(100); // Give it time to block
+
+        // Add a new clause, which should unblock the waiting thread
+        Clause newClause = ClauseParser.parseClause("C(z)");
+        database.addClause(newClause);
+
+        t.join(5000); // Wait for the thread to finish (with a timeout)
+        assertFalse(t.isAlive(), "Thread should have terminated after being unblocked");
+    }
+
+    @Test
+    public void testSetResolved() throws InterruptedException {
         Clause clause3 = ClauseParser.parseClause("A(x)");
         database.addClause(clause3); // Has ID 3
 
@@ -222,7 +249,7 @@ public class TestDatabase {
     }
 
     @Test
-    public void testFlushResolvents() {
+    public void testFlushResolvents() throws InterruptedException {
         Clause resolvent = ClauseParser.parseClause("P(x) ∨ R(z)");
         database.addClause(resolvent);
         assertEquals(3, database.countClauses());
@@ -235,7 +262,7 @@ public class TestDatabase {
     }
 
     @Test
-    public void testFlushResolvents_ResetsLastRetrieved() {
+    public void testFlushResolvents_ResetsLastRetrieved() throws InterruptedException {
         // Advance lastRetrieved by fetching
         database.getUnresolvedClauses(5);
 
@@ -251,7 +278,6 @@ public class TestDatabase {
         assertTrue(unresolved.contains(clause1));
         assertTrue(unresolved.contains(clause2));
     }
-
 
     @Test
     public void testClearClauses() {

@@ -2,94 +2,96 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 public class TestProverThread {
 
-    /**
-     * Test class for the ProverThread class.
-     * <p>
-     * The ProverThread class implements Runnable and is responsible for resolving
-     * clauses in the database using the ResolutionTheoremProver and ensuring that
-     * new resolvents are saved into the database. The run method repeatedly fetches
-     * unresolved clauses, resolves them against existing clauses in the database,
-     * and stores the resulting resolvents back into the database.
-     */
-
     @Test
-    public void testRunThreadStopsWhenEmptyClauseFound() {
-        // Mock the database
+    public void testRunThreadStopsWhenEmptyClauseFound() throws InterruptedException {
         Database mockDatabase = Mockito.mock(Database.class);
-        when(mockDatabase.hasEmptyClause()).thenReturn(true); // Simulate that the database already contains an empty
-        // clause
+        AtomicBoolean emptyClauseFound = new AtomicBoolean(true); // Simulate empty clause is already found
 
-        AtomicBoolean isRunning = new AtomicBoolean(true);
-        AtomicBoolean hasWork = new AtomicBoolean(true);
-
-        // Run the ProverThread
-        ProverThread proverThread = new ProverThread(1, new boolean[1], mockDatabase, isRunning, hasWork);
+        ProverThread proverThread = new ProverThread(1, mockDatabase, emptyClauseFound);
         proverThread.run();
 
-        // Verify that no operations are performed on the database since the empty
-        // clause was found
+        // Verify that no database interaction occurs if the empty clause is already found
         verify(mockDatabase, never()).getUnresolvedClauses(anyInt());
+    }
+
+    @Test
+    public void testRunContinuesWhenNoUnresolvedClauses() throws InterruptedException {
+        Database mockDatabase = Mockito.mock(Database.class);
+        AtomicBoolean emptyClauseFound = new AtomicBoolean(false);
+
+        // Simulate getUnresolvedClauses returning an empty list, then interrupting the thread
+        when(mockDatabase.getUnresolvedClauses(anyInt()))
+                .thenReturn(new ArrayList<>()) // First, return no work
+                .thenAnswer(invocation -> {
+                    emptyClauseFound.set(true); // Then, stop the thread
+                    return new ArrayList<>();
+                });
+
+        ProverThread proverThread = new ProverThread(1, mockDatabase, emptyClauseFound);
+        proverThread.run();
+
+        // Verify that getUnresolvedClauses was called, but no processing happened
+        verify(mockDatabase, atLeastOnce()).getUnresolvedClauses(anyInt());
+        verify(mockDatabase, never()).getClauses(anyInt(), anyInt());
         verify(mockDatabase, never()).addClauses(anyList());
     }
 
     @Test
-    public void testRunWaitsWhenNoUnresolvedClauses() throws InterruptedException {
-        // Mock the database
+    public void testRunHandlesInterruptedException() throws InterruptedException {
         Database mockDatabase = Mockito.mock(Database.class);
-        when(mockDatabase.hasEmptyClause()).thenReturn(false).thenReturn(true); // Simulate loop and stop after 1
-        // iteration
-        when(mockDatabase.getUnresolvedClauses(Constants.UNRESOLVED_BATCH_SIZE)).thenReturn(new ArrayList<>()); // No
+        AtomicBoolean emptyClauseFound = new AtomicBoolean(false);
 
+        // Simulate getUnresolvedClauses throwing an InterruptedException
+        when(mockDatabase.getUnresolvedClauses(anyInt())).thenThrow(new InterruptedException());
 
-        AtomicBoolean isRunning = new AtomicBoolean(true);
-        AtomicBoolean hasWork = new AtomicBoolean(true);
-
-        // Spy on Thread to verify sleep is called
-        Thread mockThread = spy(Thread.class);
-
-        // Run the ProverThread
-        ProverThread proverThread = new ProverThread(1, new boolean[1], mockDatabase, isRunning, hasWork);
+        ProverThread proverThread = new ProverThread(1, mockDatabase, emptyClauseFound);
         proverThread.run();
 
-        // Verify interactions with the mocked database
-        verify(mockDatabase, atLeastOnce()).getUnresolvedClauses(Constants.UNRESOLVED_BATCH_SIZE);
-        verify(mockDatabase, never()).getClauses(anyInt(), eq(Constants.CLAUSE_BATCH_SIZE));
-        verify(mockDatabase, never()).addClauses(anyList());
-
-        // Verify that the thread sleeps when there are no unresolved clauses
-        verifyNoMoreInteractions(mockThread);
-    }
-
-    @Test
-    public void testRunHandlesInterruptedException() {
-        // Mock the database
-        Database mockDatabase = Mockito.mock(Database.class);
-        when(mockDatabase.hasEmptyClause()).thenReturn(false); // Simulate loop never exits naturally
-        when(mockDatabase.getUnresolvedClauses(Constants.UNRESOLVED_BATCH_SIZE)).thenReturn(new ArrayList<>()); // No
-        // unresolved
-        // clauses
-
-        // Mock the Thread to simulate an InterruptedException
-        Thread.currentThread().interrupt();
-
-        AtomicBoolean isRunning = new AtomicBoolean(true);
-        AtomicBoolean hasWork = new AtomicBoolean(true);
-
-        ProverThread proverThread = new ProverThread(1, new boolean[1], mockDatabase, isRunning, hasWork);
-
-        // Run the prover thread
-        proverThread.run();
-
-        // Verify that the thread checked unresolved clauses once and was interrupted
-        verify(mockDatabase, atLeastOnce()).getUnresolvedClauses(Constants.UNRESOLVED_BATCH_SIZE);
+        // Verify the thread was interrupted and stopped
         assertTrue(Thread.currentThread().isInterrupted());
+        assertFalse(emptyClauseFound.get(), "emptyClauseFound should not be set on interrupt");
+    }
+
+    @Test
+    public void testRunResolvesAndSavesClauses() throws InterruptedException {
+        Database mockDatabase = Mockito.mock(Database.class);
+        AtomicBoolean emptyClauseFound = new AtomicBoolean(false);
+
+        // Prepare mock data
+        Clause unresolvedClause = ClauseParser.parseClause("P(x)");
+        unresolvedClause.setId(1);
+        ArrayList<Clause> unresolvedClauses = new ArrayList<>(Collections.singletonList(unresolvedClause));
+
+        Clause dbClause = ClauseParser.parseClause("¬P(A)");
+        dbClause.setId(2);
+        ArrayList<Clause> dbClauses = new ArrayList<>(Collections.singletonList(dbClause));
+
+        // Mock database calls
+        when(mockDatabase.getUnresolvedClauses(anyInt()))
+                .thenReturn(unresolvedClauses)
+                .thenAnswer(invocation -> {
+                    emptyClauseFound.set(true); // Stop after one loop
+                    return new ArrayList<>();
+                });
+        when(mockDatabase.getClauses(anyInt(), anyInt())).thenReturn(dbClauses);
+
+
+        ProverThread proverThread = new ProverThread(1, mockDatabase, emptyClauseFound);
+        proverThread.run();
+
+        // Verify that resolvents were added to the database
+        verify(mockDatabase, atLeastOnce()).addClauses(anyList());
+        verify(mockDatabase, atLeastOnce()).setResolved(unresolvedClauses);
     }
 }
+

@@ -2,17 +2,16 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class Database {
 
     private int lastRetrieved;
     private String DB_PATH;
-    private ReentrantLock lock = new ReentrantLock();
+    private final ReentrantLock lock = new ReentrantLock();
+    private final Condition hasNewClauses = lock.newCondition();
     private Connection conn;
-    public AtomicBoolean hasWork = new AtomicBoolean(false);
-    // TODO: Add a hasWork atomicBoolean triggered by there being clauses in the database that have not been resolved
     private int lastId;
 
     public Database(List<Clause> clauses) {
@@ -49,20 +48,7 @@ public class Database {
         clearClauses();
 
         // fill clauses table with clauses
-        String[] clauseStrings = new String[clauses.size()];
-        for (int i = 0; i < clauses.size(); i++) {
-            clauseStrings[i] = clauses.get(i).toString();
-        }
-        try (PreparedStatement stmt = conn.prepareStatement("INSERT INTO clauses (clause, starting_set) VALUES (?, ?)")) {
-            for (String clauseString : clauseStrings) {
-                stmt.setString(1, clauseString);
-                stmt.setBoolean(2, true);
-                stmt.addBatch();
-            }
-            stmt.executeBatch();
-        } catch (SQLException e) {
-            System.out.println(e.getMessage());
-        }
+        addClauses(clauses, true);
         lastRetrieved = getFirstId();
         lastId = getLastId();
     }
@@ -78,28 +64,41 @@ public class Database {
     }
 
     public void addClause(Clause clause) {
-        String clauseString = clause.toString();
-
-        try (PreparedStatement stmt = conn.prepareStatement("INSERT OR IGNORE INTO clauses (clause) VALUES (?)")) {
-            stmt.setString(1, clauseString);
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println(e.getMessage());
+        lock.lock();
+        try {
+            String clauseString = clause.toString();
+            try (PreparedStatement stmt = conn.prepareStatement("INSERT OR IGNORE INTO clauses (clause) VALUES (?)")) {
+                stmt.setString(1, clauseString);
+                stmt.executeUpdate();
+            } catch (SQLException e) {
+                System.out.println(e.getMessage());
+            }
+            lastId++;
+            hasNewClauses.signalAll();
+        } finally {
+            lock.unlock();
         }
-        lastId++;
-        hasWork.set(true);
     }
 
     public void addClauses(List<Clause> clauses) {
-        try (PreparedStatement pstmt = conn.prepareStatement("INSERT OR IGNORE INTO clauses (clause) VALUES (?)")) {
+        addClauses(clauses, false);
+    }
+
+    private void addClauses(List<Clause> clauses, boolean isStartingSet) {
+        System.out.println("Waiting to add clauses to database");
+        lock.lock();
+        try (PreparedStatement pstmt = conn
+                .prepareStatement("INSERT OR IGNORE INTO clauses (clause, starting_set) VALUES (?,?)")) {
             conn.setAutoCommit(false);
             for (Clause clause : clauses) {
                 pstmt.setString(1, clause.toString());
+                pstmt.setBoolean(2, isStartingSet);
                 pstmt.addBatch();
             }
             pstmt.executeBatch();
             lastId += clauses.size();
             conn.commit();
+            hasNewClauses.signalAll();
         } catch (SQLException e) {
             System.out.println(e.getMessage());
             if (conn != null) {
@@ -117,6 +116,8 @@ public class Database {
                     System.out.println(e.getMessage());
                 }
             }
+            lock.unlock();
+            System.out.println("Added clause to database");
         }
     }
 
@@ -138,30 +139,34 @@ public class Database {
         return clauses;
     }
 
-    public ArrayList<Clause> getUnresolvedClauses(int amount) {
+    public ArrayList<Clause> getUnresolvedClauses(int amount) throws InterruptedException {
         ArrayList<Clause> clauses = new ArrayList<>();
-        lock.lock();
-        try (PreparedStatement pstmt = conn.prepareStatement("SELECT id, clause FROM clauses WHERE resolved is FALSE AND id >= ? LIMIT ?")) {
-            pstmt.setInt(1, lastRetrieved);
-            pstmt.setInt(2, amount);
-            try (ResultSet results = pstmt.executeQuery()) {
-                while (results.next()) {
-                    System.out.println("Retrieved clause:" + results.getString("clause"));
-                    Clause new_clause = ClauseParser.parseClause(results.getString("clause"));
-                    new_clause.setId(results.getInt("id"));
-                    clauses.add(new_clause);
-                }
+        try {
+            while (lastRetrieved >= lastId) {
+                hasNewClauses.await();
             }
-        } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            lock.lock();
+            try (PreparedStatement pstmt = conn
+                    .prepareStatement("SELECT id, clause FROM clauses WHERE resolved is FALSE AND id >= ? LIMIT ?")) {
+                pstmt.setInt(1, lastRetrieved);
+                pstmt.setInt(2, amount);
+                try (ResultSet results = pstmt.executeQuery()) {
+                    while (results.next()) {
+                        System.out.println("Retrieved clause:" + results.getString("clause"));
+                        Clause new_clause = ClauseParser.parseClause(results.getString("clause"));
+                        new_clause.setId(results.getInt("id"));
+                        clauses.add(new_clause);
+                    }
+                }
+            } catch (SQLException e) {
+                System.out.println(e.getMessage());
+            }
+
+            if (!clauses.isEmpty()) {
+                lastRetrieved = clauses.getLast().getId() + 1;
+            }
         } finally {
             lock.unlock();
-        }
-        // update the lastRetrieved to reflect the last clause id
-        if (!clauses.isEmpty()) {
-            lastRetrieved = clauses.getLast().getId() + 1;
-            // if there are more clauses to be processed, set hasWork to true
-            hasWork.set(lastRetrieved < lastId);
         }
         return clauses;
     }
@@ -205,31 +210,39 @@ public class Database {
     }
 
     public void flushResolvents() {
-        // clear all clauses not in the starting set;
-        try (Statement stmt = conn.createStatement()) {
-            stmt.executeUpdate("DELETE FROM clauses where starting_set = FALSE");
+        lock.lock();
+        try {
+            // clear all clauses not in the starting set;
+            try (Statement stmt = conn.createStatement()) {
+                stmt.executeUpdate("DELETE FROM clauses where starting_set = FALSE");
 
-            // reset starting set resolved to false
-            stmt.executeUpdate("UPDATE clauses SET resolved = FALSE WHERE starting_set = TRUE");
+                // reset starting set resolved to false
+                stmt.executeUpdate("UPDATE clauses SET resolved = FALSE WHERE starting_set = TRUE");
 
-            // Optimize and vacuum database
-            stmt.executeUpdate("VACUUM");
-            stmt.executeUpdate("PRAGMA optimize");
-            stmt.executeUpdate("PRAGMA wal_checkpoint(TRUNCATE)");
-        } catch (SQLException e) {
-            System.out.println(e.getMessage());
+                // Optimize and vacuum database
+                stmt.executeUpdate("VACUUM");
+                stmt.executeUpdate("PRAGMA optimize");
+                stmt.executeUpdate("PRAGMA wal_checkpoint(TRUNCATE)");
+            } catch (SQLException e) {
+                System.out.println(e.getMessage());
+            }
+            // reset lastRetrieved index to first index in the database;
+            lastRetrieved = getFirstId();
+            lastId = getLastId();
+            hasNewClauses.signalAll();
+        } finally {
+            lock.unlock();
         }
-        // reset lastRetrieved index to first index in the database;
-        lastRetrieved = getFirstId();
-        lastId = getLastId();
-        hasWork.set(true);
     }
 
     public void clearClauses() {
+        lock.lock();
         try (Statement stmt = conn.createStatement()) {
             stmt.executeUpdate("DELETE FROM clauses");
         } catch (SQLException e) {
             System.out.println(e.getMessage());
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -255,7 +268,6 @@ public class Database {
             System.out.println(e.getMessage());
         }
         return -1;
-
     }
 
     public int countClauses() {

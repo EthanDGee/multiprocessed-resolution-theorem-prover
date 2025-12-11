@@ -44,13 +44,16 @@ public class TestMultiThreadedResolver {
         List<Clause> clauses = new ArrayList<>(Collections.singletonList(clause1));
 
         MultiThreadedResolver resolver = new MultiThreadedResolver(clauses);
+        try {
+            // When we try to prove the negation, which is ¬Man(Socrates)
+            Clause negatedConclusion = ClauseParser.parseClause("¬Man(Socrates)");
 
-        // When we try to prove the negation, which is ¬Man(Socrates)
-        Clause negatedConclusion = ClauseParser.parseClause("¬Man(Socrates)");
-
-        // Then the proof should succeed by finding an empty clause
-        boolean result = resolver.prove(negatedConclusion);
-        assertTrue(result, "Proof should succeed when a contradiction is provable.");
+            // Then the proof should succeed by finding an empty clause
+            boolean result = resolver.prove(negatedConclusion);
+            assertTrue(result, "Proof should succeed when a contradiction is provable.");
+        } finally {
+            resolver.closeDatabase();
+        }
     }
 
     @Test
@@ -63,13 +66,16 @@ public class TestMultiThreadedResolver {
         clauses.add(clause2);
 
         MultiThreadedResolver resolver = new MultiThreadedResolver(clauses);
+        try {
+            // When we try to prove a clause that doesn't create a contradiction
+            Clause negatedConclusion = ClauseParser.parseClause("R(z)");
 
-        // When we try to prove a clause that doesn't create a contradiction
-        Clause negatedConclusion = ClauseParser.parseClause("R(z)");
-
-        // Then the proof should fail
-        boolean result = resolver.prove(negatedConclusion);
-        assertFalse(result, "Proof should fail when no contradiction is found.");
+            // Then the proof should fail
+            boolean result = resolver.prove(negatedConclusion);
+            assertFalse(result, "Proof should fail when no contradiction is found.");
+        } finally {
+            resolver.closeDatabase();
+        }
     }
 
     @Test
@@ -77,21 +83,25 @@ public class TestMultiThreadedResolver {
         // Given a set of initial clauses
         List<Clause> initialClauses = new ArrayList<>(Collections.singletonList(ClauseParser.parseClause("P(x)")));
         MultiThreadedResolver resolver = new MultiThreadedResolver(initialClauses);
-        Clause negatedQuery = ClauseParser.parseClause("Q(y)");
+        try {
+            Clause negatedQuery = ClauseParser.parseClause("Q(y)");
 
-        // When the prove method is called
-        resolver.prove(negatedQuery);
+            // When the prove method is called
+            resolver.prove(negatedQuery);
 
-        // Then the negated clause should be added to the database
-        // We use reflection to access the private database field for verification
-        Field databaseField = MultiThreadedResolver.class.getDeclaredField("database");
-        databaseField.setAccessible(true);
-        Database db = (Database) databaseField.get(resolver);
+            // Then the negated clause should be added to the database
+            // We use reflection to access the private database field for verification
+            Field databaseField = MultiThreadedResolver.class.getDeclaredField("database");
+            databaseField.setAccessible(true);
+            Database db = (Database) databaseField.get(resolver);
 
-        // The database will contain the initial clause + the negated query
-        assertEquals(2, db.countClauses());
-        ArrayList<Clause> allClauses = db.getClauses(1, 2);
-        assertTrue(allClauses.contains(negatedQuery), "The negated clause should have been added to the database.");
+            // The database will contain the initial clause + the negated query
+            assertEquals(2, db.countClauses());
+            ArrayList<Clause> allClauses = db.getClauses(1, 2);
+            assertTrue(allClauses.contains(negatedQuery), "The negated clause should have been added to the database.");
+        } finally {
+            resolver.closeDatabase();
+        }
     }
 
     @Test
@@ -109,10 +119,15 @@ public class TestMultiThreadedResolver {
 
         MultiThreadedResolver resolver = new MultiThreadedResolver(clauses);
 
-        // We want to prove Mortal(Socrates). The negated conclusion is ¬Mortal(Socrates)
-        Clause negatedConclusion = ClauseParser.parseClause("¬Mortal(Socrates)");
+        try {
+            // We want to prove Mortal(Socrates). The negated conclusion is ¬Mortal(Socrates)
+            Clause negatedConclusion = ClauseParser.parseClause("¬Mortal(Socrates)");
 
-        boolean result = resolver.prove(negatedConclusion);
-        assertTrue(result, "Should successfully prove that Socrates is mortal.");
+            boolean result = resolver.prove(negatedConclusion);
+            assertTrue(result, "Should successfully prove that Socrates is mortal.");
+        } finally {
+            resolver.closeDatabase();
+        }
     }
 }
+

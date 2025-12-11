@@ -12,6 +12,7 @@ public class MultiThreadedResolver {
 
     }
 
+
     public void closeDatabase() {
         database.close();
     }
@@ -24,14 +25,12 @@ public class MultiThreadedResolver {
 
         // Create Thread Pool
         int availableProcessors = Runtime.getRuntime().availableProcessors();
-
         //TODO: IMPLEMENT BETTER STOPPER
-        boolean[] working = new boolean[availableProcessors];
         List<Thread> resolverThreads = new ArrayList<>();
 
         for (int i = 0; i < availableProcessors; i++) {
             // Creates a new Runnable
-            Runnable worker = new ProverThread(i, working, database, emptyClauseFound, database.hasWork); // adds the new thread
+            Runnable worker = new ProverThread(i, database, emptyClauseFound); // adds the new thread
             resolverThreads.add(new Thread(worker));
             // runs the thread
             resolverThreads.get(i).start();
