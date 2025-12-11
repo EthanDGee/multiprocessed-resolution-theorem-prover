@@ -3,9 +3,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
-public class ResolutionExample {
+public class Benchmark {
     public static void main(String[] args) {
-        Example example = new ResolutionExample().largeExample();
+        Example example = new Benchmark().largeExample();
         try {
             example.runExample();
         } catch (InterruptedException e) {
@@ -134,7 +134,7 @@ public class ResolutionExample {
         clauses.add(p1);
 
         // Distractor chain 1: Q1(x) -> ... -> Q10(x)
-        for (int i = 1; i < 300; i++) {
+        for (int i = 1; i < 10; i++) {
             Clause clause = new Clause();
             clause.addLiteral(new Literal("Q" + i, "x", false));
             clause.addLiteral(new Literal("Q" + (i + 1), "x", true));
@@ -145,7 +145,7 @@ public class ResolutionExample {
         clauses.add(q1);
 
         // Distractor chain 2: R1(x) -> ... -> R20(x)
-        for (int i = 1; i < 200; i++) {
+        for (int i = 1; i < 40; i++) {
             Clause clause = new Clause();
             clause.addLiteral(new Literal("R" + i, "x", false));
             clause.addLiteral(new Literal("R" + (i + 1), "x", true));
@@ -183,6 +183,7 @@ public class ResolutionExample {
             boolean singleResult = singleResolver.prove(negation);
             long endTimeSingle = System.currentTimeMillis();
             long singleTime = endTimeSingle - startTimeSingle;
+            System.out.println("SingleThreadResolver: " + singleResult + " (Time: " + singleTime + "ms)");
 
             // Run MultiThreadResolver
             long startTimeMulti = System.currentTimeMillis();

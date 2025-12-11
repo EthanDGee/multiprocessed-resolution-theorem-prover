@@ -85,7 +85,6 @@ public class Database {
     }
 
     private void addClauses(List<Clause> clauses, boolean isStartingSet) {
-        System.out.println("Waiting to add clauses to database");
         lock.lock();
         try (PreparedStatement pstmt = conn
                 .prepareStatement("INSERT OR IGNORE INTO clauses (clause, starting_set) VALUES (?,?)")) {
@@ -117,7 +116,6 @@ public class Database {
                 }
             }
             lock.unlock();
-            System.out.println("Added clause to database");
         }
     }
 
@@ -152,7 +150,6 @@ public class Database {
                 pstmt.setInt(2, amount);
                 try (ResultSet results = pstmt.executeQuery()) {
                     while (results.next()) {
-                        System.out.println("Retrieved clause:" + results.getString("clause"));
                         Clause new_clause = ClauseParser.parseClause(results.getString("clause"));
                         new_clause.setId(results.getInt("id"));
                         clauses.add(new_clause);
