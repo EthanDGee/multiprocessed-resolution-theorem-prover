@@ -1,7 +1,6 @@
 = Multithreaded Resolution Theorem Prover
 
 == Background
-
 I expanded the resolution theorem prover discussed in class to improve its scalability. The original system was resource-intensive with high time and space complexities, limiting its viability for complex tasks. To address these issues without altering the fundamental algorithm, I implemented two key enhancements: storing the disjunction pool in a database and incorporating multiprocessing.
 
 By using a database for the disjunction pool, I exceeded RAM limitations. Storage is cheaper, more scalable, and not constrained by CPU memory limits, broadening access to the tool. While this introduced I/O overhead, it significantly increased the maximum size of the disjunction pool on consumer and professional hardware.
@@ -10,23 +9,22 @@ Multiprocessing reduced runtime through parallelization. A one-to-many architect
 
 == Limitations of RTP
 
-The first and perhaps most glaring weakness is both the complexity of the algorithm. (INSERT COMPLEXITY). This makes the usability of it for more complex tasks questionable. There are two key problem areas; the time it takes to run, and the size of the clauses.
+The first and perhaps most glaring weakness is the complexity of the algorithm. (INSERT COMPLEXITY). This makes its usability for more complex tasks questionable. There are two key problem areas: the time it takes to run, and the size of the clauses.
 
 To address this I implemented two key technologies.
-1. *A local database* -  This allows for the total number of clauses to grow much higher than the limitations of the computers RAM.
-2. *Multithreading* - While this doesn't reduce the complexity of the algorithm itself it does significantly speed up the process.
+1. *A local database* -  This allows for the total number of clauses to grow much higher than the limitations of the computer's RAM.
+2. *Multithreading* - While this doesn't reduce the complexity of the algorithm itself, it does significantly speed up the process.
 
 
 == Implementation
 
 === Multithreading
 
-With the primary goal of this model being the introduction of multithreading, I made the decision to switch from lisp to java. This meant that I did have to reimplement the RTP, but it made the process of extending the prover far easier.
+With the primary goal of this model being the introduction of multithreading, I made the decision to switch from Lisp to Java. This meant that I did have to reimplement the RTP, but it made the process of extending the prover far easier.
 
-I implemented using a manager worker hierarchy, I created a created a management class called `MultiThreadedResolver` this is in charge of starting/stopping all of the threads, checking to see if the proof failed (none of the threads are running, there's no unresolved items in the database, and the there is no empty clause) and initialzing the database.
+I implemented a manager-worker hierarchy and created a management class called `MultiThreadedResolver`. This is in charge of starting/stopping all of the threads, checking to see if the proof failed (none of the threads are running, there's no unresolved items in the database, and there is no empty clause), and initializing the database.
 
-In addition to `MultiThreadedResolver`, I also created `ProverThread`. It handles all of the actual resolving started with taking my base reimplementation of the RTP and
-
+In addition to `MultiThreadedResolver`, I also created `ProverThread`. It handles all of the actual resolving, starting with taking my base reimplementation of the RTP and
 
 === Database
 
@@ -34,20 +32,15 @@ In addition to `MultiThreadedResolver`, I also created `ProverThread`. It handle
 
 - clause storing and general structure
 
-- concurrency hadnling
-
--
+- concurrency handling
 
 == challenges
 
 === Tuning the Multithreading Hyper Parameters
 
-And here I was thinking that I could get away from hyperparameter tuning. While this is not exactly the same thing, the sizes of the various parameters for the Multi-Threaded Resolver did have major impacts on performance. Tuning it for best performance was a delicate balance of reducing the amount of interactions with the datbase, and minimizing the amount of thread starvation.
+And here I was thinking that I could get away from hyperparameter tuning. While this is not exactly the same thing, the sizes of the various parameters for the Multi-Threaded Resolver did have major impacts on performance. Tuning it for best performance was a delicate balance of reducing the amount of interactions with the database, and minimizing the amount of thread starvation.
 
-There are three key variable that were at the root of this `UNRESOLVED_BATCH_SIZE` which determines the max amount of unresolved clauses handled by each thread, `CLAUSE_BATCH_SIZE` which controls the number of clauses that are compared with the unresolved at each stage, and finally, `RESOLVENT_SAVE_THRESHOLD` which controls how many unique resolutions must be made before they are saved to the database.
-
-
-
+There are three key variables that were at the root of this: `UNRESOLVED_BATCH_SIZE`, which determines the max amount of unresolved clauses handled by each thread; `CLAUSE_BATCH_SIZE`, which controls the number of clauses that are compared with the unresolved at each stage; and finally, `RESOLVENT_SAVE_THRESHOLD`, which controls how many unique resolutions must be made before they are saved to the database.
 
 ```java
   // Database Constants
@@ -58,7 +51,7 @@ There are three key variable that were at the root of this `UNRESOLVED_BATCH_SIZ
 == Results
 === Benchmarking Solution
 
-There currently exists no common benchmark for RTP algorithms. This is for a variety of reasons, but most importantly comparing speed isn't too common of a problem. RTP is more result oriented than anything else, so perfrormance isn't as saught after of a metric. So with that being said I created the following function that generates a set of clause of size \'n\'. It works be creating a chain of clauses that all reduce into each other so that we can guarantee there are resolutions that result from the process. We then add one negated conclusion to serve as our final case, this is what completes the chain. Critically in order to better mimic real world performance the clauses are shuffled.
+There currently exists no common benchmark for RTP algorithms. This is for a variety of reasons, but most importantly, comparing speed isn't too common of a problem. RTP is more result-oriented than anything else, so performance isn't as sought after of a metric. So with that being said, I created the following function that generates a set of clauses of size 'n'. It works by creating a chain of clauses that all reduce into each other so that we can guarantee there are resolutions that result from the process. We then add one negated conclusion to serve as our final case; this is what completes the chain. Critically, in order to better mimic real world performance, the clauses are shuffled.
 
 ```java
 public Example nSizedExample(int n) {
@@ -85,7 +78,8 @@ public Example nSizedExample(int n) {
     return new Example(clauses, negatedConclusion);
 }
 ```
-All of the below bench marks were done on my laptop running Linux Mint 25.1 Zara with 13th Gen Intel(R) Core(TM) i7-1360P CPU using all 16 threads. The program runs using all available processors by default. I tested the runtime of both the single threaded and multithreaded resolvers on clause sizes from 5, 10, 125. Each test was ran 5 times to ensure consistency and th average result is the one reported.125 was selected as the stopping point as it has an extremely high number of resolved threads, and high complexity level without being overly extreme to the point that averaging along with calculating the preceding numbers would become too time intensive. With all that being said these tests took around 90 minutes run.
+
+All of the below benchmarks were done on my laptop running Linux Mint 25.1 Zara with 13th Gen Intel(R) Core(TM) i7-1360P CPU using all 16 threads. The program runs using all available processors by default. I tested the runtime of both the single-threaded and multithreaded resolvers on clause sizes from 5, 10, 125. Each test was run 5 times to ensure consistency, and the average result is the one reported. 125 was selected as the stopping point as it has an extremely high number of resolved threads and high complexity level without being overly extreme to the point that averaging along with calculating the preceding numbers would become too time intensive. With all that being said, these tests took around 90 minutes to run.
 
 #figure(
   // align: center,
@@ -109,25 +103,21 @@ All of the below bench marks were done on my laptop running Linux Mint 25.1 Zara
 )
 === Interpreting Results
 
-As expected in the earlier stages, single threaded performance had the lead in the earlier stages, this is due to the far higher time in initial set up and overhead. But as complexity increases the multithreaded outperforms the single threaded in performance, notably coming to a near tie at a complexity of 25.
+As expected in the earlier stages, single-threaded performance had the lead in the earlier stages. This is due to the far higher time in initial setup and overhead. But as complexity increases, the multithreaded outperforms the single-threaded in performance, notably coming to a near tie at a complexity of 25.
 
-The interesting thing that I didn't expect is that the multithreadeds improvement over the doesn't level off at around 16x that comes from the dividing of labor. Instead it continues past that point reaching an astonishing 70x improvement over base performance at a clause size of 125. This is likely due to a combination of things. This is likely primarily causes by the fact that `ProverThread`s go from the back of the pool to the front. So in addition to the perfromance benifit of splitting up the labor. They start their deductions focusing on resolving with previous resolvents. These are far more valuable calcaulations as the complexity of a set grows the likelihood that the solution is going to come from deeper resolvent also increases. Its also likley partially due to the tests themselves. The benchmark I created Is unwittingly very much focused on deeper levels of resolution.
-
+The interesting thing that I didn't expect is that the multithreaded's improvement over the single-threaded doesn't level off at around 16x, which comes from the dividing of labor. Instead, it continues past that point, reaching an astonishing 70x improvement over base performance at a clause size of 125. This is likely due to a combination of things. This is likely primarily caused by the fact that `ProverThread`s go from the back of the pool to the front. So in addition to the performance benefit of splitting up the labor, they start their deductions focusing on resolving with previous resolvents. These are far more valuable calculations; as the complexity of a set grows, the likelihood that the solution is going to come from deeper resolvents also increases. It's also likely partially due to the tests themselves. The benchmark I created is unwittingly very much focused on deeper levels of resolution.
 
 #figure(
   image("performance_improvement.png", width: 75%),
   caption: [Performance Improvement of Multi Threaded Resolver over Single Threaded Resolver],
 )
 
-
-
 == Future work
 
-- create simple reinforcement learning linear regression to optimize the parameters of the model for faster performance.
+The manual testing of different combinations of "hyperparameters" was extremely slow and manual, and I really feel like there is some real room for improvement. I also don't feel entirely confident in my final result; there are also a variety of other parameters I didn't explore, such as number of threads. This decision making under uncertainty combined with a definite target (runtime) seems like a strong candidate for a reinforcement learning model to optimize this process so that the resolver performs optimally under any set of clauses.
 
-- analyze performance across various number of cpus
+My benchmark wasn't as exhaustive as I'd like, and the worth of a system is dependent on its real world performance, so it would be extremely useful to expand my benchmarks to include some real world problems in addition to the `nSizedExample` approach.
 
-- Real world performance by using legitimate use cases as tests
-
+Finally, the use of a database for a locally computed resolution theorem prover might seem a little strange, and there's good reason for that. There aren't major reasons to do this when we are dealing with disjoint pools that are measured in the thousands. However, one purpose that it does provide is in building the framework for a much larger resolution theorem prover for more complex discoveries. This whole system essentially works as a prototype for a distributed, compute-based resolution theorem prover.
 
 == Conclusions
