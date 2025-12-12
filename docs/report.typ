@@ -34,8 +34,13 @@ And here I was thinking that I could get away from hyperparameter tuning. While 
 
 There are three key variables that were at the root of this: `UNRESOLVED_BATCH_SIZE`, which determines the max amount of unresolved clauses handled by each thread; `CLAUSE_BATCH_SIZE`, which controls the number of clauses that are compared with the unresolved at each stage; and finally, `RESOLVENT_SAVE_THRESHOLD`, which controls how many unique resolutions must be made before they are saved to the database.
 
+
+The simplest example of this is `CLAUSE_BATCH_SIZE`. It can't be too large times before the large gaps between update times causes the other threads to starve but it can't be too small then the overhead of the  to avoid the slowdown of requesting from the database. `UNRESOLVED_BATCH_SIZE` comes with the added complexity of not being able to fully know whether or not the clauses we're going to add are truly going to be unique among the existing dataset, because constantly querying to check for uniqueness is ineffecient and we can't be constantly checking the other `ProverThread`'s work. This was an incredibly difficult problem to trouble shoot as improperly set constants were incredibly slow, and could easily be confused for a bug. This lead to the whole experience feeling like dealing with a heisenbug.
+
+Eventually I landed on the following constants:
+
+
 ```java
-  // Database Constants
     public static final int CLAUSE_BATCH_SIZE = 300;
     public static final int UNRESOLVED_BATCH_SIZE = 100;
     public static final int RESOLVENT_SAVE_THRESHOLD = 100;
@@ -113,3 +118,5 @@ My benchmark wasn't as exhaustive as I'd like, and the worth of a system is depe
 Finally, the use of a database for a locally computed resolution theorem prover might seem a little strange, and there's good reason for that. There aren't major reasons to do this when we are dealing with disjoint pools that are measured in the thousands. However, one purpose that it does provide is in building the framework for a much larger resolution theorem prover for more complex discoveries. This whole system essentially works as a prototype for a distributed-compute-based resolution theorem prover.
 
 == Conclusions
+
+//TODO: FINISH CONCLUSION
