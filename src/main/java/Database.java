@@ -245,6 +245,8 @@ public class Database {
         lock.lock();
         try (Statement stmt = conn.createStatement()) {
             stmt.executeUpdate("DELETE FROM clauses");
+            // reset autoincrement
+            stmt.executeUpdate("DELETE FROM sqlite_sequence WHERE name='clauses'");
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         } finally {

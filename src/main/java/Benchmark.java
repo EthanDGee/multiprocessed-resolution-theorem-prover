@@ -5,11 +5,32 @@ import java.util.Random;
 
 public class Benchmark {
     public static void main(String[] args) {
-        Example example = new Benchmark().largeExample();
+
+        Results[] results = new Results[25];
         try {
-            example.runExample();
+            for (int i = 1; i < 26; i++) {
+                long totalSingleTime = 0;
+                long totalMultiTime = 0;
+                Example example = new Benchmark().nSizedExample(i * 5);
+
+                for (int j = 0; j < 5; j++) {
+                    Results run = example.runExample();
+                    totalSingleTime += run.singleThreadTime;
+                    totalMultiTime += run.multiThreadTime;
+                }
+
+                results[i - 1] = new Results(totalSingleTime / 3, totalMultiTime / 3);
+            }
         } catch (InterruptedException e) {
             e.printStackTrace();
+        }
+
+        for (int i = 0; i < results.length; i++) {
+            System.out.print("Clause N: " + (i + 1) * 5);
+            System.out.print("\tSingle: " + results[i].singleThreadTime + "ms");
+            System.out.print("\tMulti: " + results[i].multiThreadTime + "ms\t");
+            System.out.print("Difference:" + Math.abs(results[i].multiThreadTime - results[i].singleThreadTime) + "ms");
+            System.out.println("\tMulti Faster:" + results[i].multiThreadIsFaster());
         }
     }
 
@@ -110,7 +131,6 @@ public class Benchmark {
         c12.addLiteral(new Literal("HasFun", "x", true));
         clauses.add(c12);
 
-
         // Negation of conclusion: ¬Happy(Jack)
         Clause negatedConclusion = new Clause();
         negatedConclusion.addLiteral(new Literal("Happy", "Jack", false));
@@ -145,7 +165,7 @@ public class Benchmark {
         clauses.add(q1);
 
         // Distractor chain 2: R1(x) -> ... -> R20(x)
-        for (int i = 1; i < 40; i++) {
+        for (int i = 1; i < 10; i++) {
             Clause clause = new Clause();
             clause.addLiteral(new Literal("R" + i, "x", false));
             clause.addLiteral(new Literal("R" + (i + 1), "x", true));
@@ -158,11 +178,50 @@ public class Benchmark {
         // Shuffle all clauses randomly to better demonstrate a more complex problem
         Collections.shuffle(clauses, new Random(33));
 
-
         // Negation of conclusion: ¬P50(BigTest)
         Clause negatedConclusion = new Clause();
         negatedConclusion.addLiteral(new Literal("P50", "BigTest", false));
         return new Example(clauses, negatedConclusion);
+    }
+
+    public Example nSizedExample(int n) {
+        List<Clause> clauses = new ArrayList<>();
+
+        // Generate chain P1 -> P2 -> ... -> Pn
+        for (int i = 1; i < n; i++) {
+            Clause clause = new Clause();
+            clause.addLiteral(new Literal("P" + i, "x", false));
+            clause.addLiteral(new Literal("P" + (i + 1), "x", true));
+            clauses.add(clause);
+        }
+
+        // Add starting clause P1(x)
+        Clause startClause = new Clause();
+        startClause.addLiteral(new Literal("P1", "x", true));
+        clauses.add(startClause);
+
+        // Shuffle all clauses randomly to better demonstrate a more complex problem
+        Collections.shuffle(clauses, new Random(33));
+
+        // Negation of conclusion: ¬Pn(x)
+        Clause negatedConclusion = new Clause();
+        negatedConclusion.addLiteral(new Literal("P" + n, "x", false));
+
+        return new Example(clauses, negatedConclusion);
+    }
+
+    public static class Results {
+        long singleThreadTime;
+        long multiThreadTime;
+
+        public Results(long singleThreadTime, long multiThreadTime) {
+            this.singleThreadTime = singleThreadTime;
+            this.multiThreadTime = multiThreadTime;
+        }
+
+        public boolean multiThreadIsFaster() {
+            return multiThreadTime < singleThreadTime;
+        }
     }
 
     public class Example {
@@ -174,7 +233,7 @@ public class Benchmark {
             this.negation = negation;
         }
 
-        public void runExample() throws InterruptedException {
+        public Results runExample() throws InterruptedException {
             System.out.println(this);
 
             // Run ResolutionTheoremProver
@@ -192,12 +251,13 @@ public class Benchmark {
             long endTimeMulti = System.currentTimeMillis();
             long multiTime = endTimeMulti - startTimeMulti;
 
-
             // Print results
             System.out.println("\nResults:");
             System.out.println("MultiThreadResolver: " + multiResult + " (Time: " + multiTime + "ms)");
             System.out.println("ResolutionTheoremProver: " + singleResult + " (Time: " + singleTime + "ms)");
             System.out.println("Difference: " + Math.abs(multiTime - singleTime) + "ms");
+
+            return new Results(singleTime, multiTime);
         }
 
         @Override
