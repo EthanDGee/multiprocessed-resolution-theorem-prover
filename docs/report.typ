@@ -1,12 +1,5 @@
 = Multithreaded Resolution Theorem Prover
 
-== Background
-I expanded the resolution theorem prover discussed in class to improve its scalability. The original system was resource-intensive with high time and space complexities, limiting its viability for complex tasks. To address these issues without altering the fundamental algorithm, I implemented two key enhancements: storing the disjunction pool in a database and incorporating multiprocessing.
-
-By using a database for the disjunction pool, I exceeded RAM limitations. Storage is cheaper, more scalable, and not constrained by CPU memory limits, broadening access to the tool. While this introduced I/O overhead, it significantly increased the maximum size of the disjunction pool on consumer and professional hardware.
-
-Multiprocessing reduced runtime through parallelization. A one-to-many architecture with batch handling allowed multiple processes to work concurrently, enhancing speed without compromising the soundness of the proofs.
-
 == Limitations of RTP
 
 The first and perhaps most glaring weakness is the complexity of the algorithm. (INSERT COMPLEXITY). This makes its usability for more complex tasks questionable. There are two key problem areas: the time it takes to run, and the size of the clauses.
@@ -20,20 +13,19 @@ To address this I implemented two key technologies.
 
 === Multithreading
 
-With the primary goal of this model being the introduction of multithreading, I made the decision to switch from Lisp to Java. This meant that I did have to reimplement the RTP, but it made the process of extending the prover far easier.
+With the primary goal of this model being the introduction of multithreading, I made the decision to switch from Lisp to Java. This meant that I did have to reimplement the RTP, but it made the process of extending the prover far easier. I implemented a manager-worker hierarchy composed of two key classes: `MultiThreadedResolver` and `ProverThread`.
 
-I implemented a manager-worker hierarchy and created a management class called `MultiThreadedResolver`. This is in charge of starting/stopping all of the threads, checking to see if the proof failed (none of the threads are running, there's no unresolved items in the database, and there is no empty clause), and initializing the database.
+The `MultiThreadedResolver` acts as manager,It starts/stops threads and determines when the proof is complete. When the `prove` method is called, it initializes a thread pool with one `ProverThread` per available CPU core. It then enters a monitoring loop that checks for one of two termination conditions: the creation of the empty clause, (I did think of a silly little joke I thought you might like while writing this paper "Who comes down the chimney to give all the good mathematicians proofs for Christmas? The empty clause". It probably needs some work, but I though you would like it) or the system has reached saturation (all clauses have been marked resolved, and no threads are working). It relies on the use atomic variables to monitor this: `solutionFound` (an `AtomicBoolean`) and `activeWorkers` (an `AtomicInteger`). It also uses an additional `hasUnresolvedClauses()` given by the database class. When a proof is completed, the `MultiThreadedResolver` interrupts all worker threads to ensure a clean shutdown and then waits for them to terminate. Finally it returns `solutionFound`.
 
-In addition to `MultiThreadedResolver`, I also created `ProverThread`. It handles all of the actual resolving, starting with taking my base reimplementation of the RTP and
+The `ProverThread` class contains the logic for the individual worker threads, and handles the actual resolution. Each thread runs a main loop that continues until a solution is found or it is interrupted by the coordinator. While running the it first requests a batch of unresolved clauses from the database by calling `database.getUnresolvedClauses()`. This has integrated blocking so that the thread waits until work is available. Once a batch is acquired, the thread signals to the coordinator that it is active by incrementing `activeWorkers` and begins the resolution process. It starts by looping in batches back to front from the last index in the unresolved batch to the start of the database. This back to front method of unification comes with the added benefit of prioritizing clause combinations that are the most likely to lead to new resolutiions. All resolvents are stored in a set and periodically saved back to the database once a threshold is reached (this is done to minimize i/o bottlenecks). If a thread generates an empty clause, it immediately notifies the `MultiThreadedResolver` by calling the `solutionWasFound()` method, which sets the atomic flag and triggers the system-wide shutdown.
 
 === Database
 
-- why sqlite? and WAL
+For the database, I chose SQLite for its simplicity, my own familiarity, serverless, and its lightwieght nature. This is perfect for a self-contained local application. It allows for the project to easilt overcome the primary challenge of concurrent databases accessed from multiple threads all while not requiring a seperate server. A lot of this is thatnks to SQLite's Write-Ahead Logging (WAL) mode. WAL allows multiple threads to reader access to the database simultaneously even while another thread is writing to it. This is perfect as resoltion theorm proving is a very read heavy, and write light algorithm. This alone gave a huge performance boost.
 
-- clause storing and general structure
+Clauses are stored in a single table with the schema `clauses(id INTEGER, clause TEXT UNIQUE, starting_set BOOLEAN, resolved BOOLEAN)`. To enforce the `UNIQUE` constraint and prevent storing duplicate clauses, I overwrote the toString for the `Clause` object. I also integrated a `ClauseParser` that can then return them back to their original form.
 
-- concurrency handling
-
+While WAL handles file-level locking by the SQLite server, it doesn't completely resolve all race conditions caused by the sorrounding program. To solve this, I implemented a much  more fine-grained concurrency control strategy at the application level to manage the workflow of the `ProverThread`'s request. The `Database` class uses Java's concurrency utilities to create a producer-consumer pattern. A single `ReentrantLock` protects all read and write operations, guaranteeing that database transactions (like adding a batch of new resolvents) are atomic. Furthermore, a `Condition` variable (`hasNewClauses`) is paired with the lock. This allows the worker threads to wait efficiently for new work without the need for constantly polling the database for new unresolved clauses. When a `ProverThread` requests new clauses and finds none, it calls `await()` on the condition, putting it to sleep without consuming CPU cycles. When another thread adds new resolvents to the database, it calls `signalAll()` on the condition, waking up all waiting threads to resume processing.
 == challenges
 
 === Tuning the Multithreading Hyper Parameters
@@ -118,6 +110,6 @@ The manual testing of different combinations of "hyperparameters" was extremely 
 
 My benchmark wasn't as exhaustive as I'd like, and the worth of a system is dependent on its real world performance, so it would be extremely useful to expand my benchmarks to include some real world problems in addition to the `nSizedExample` approach.
 
-Finally, the use of a database for a locally computed resolution theorem prover might seem a little strange, and there's good reason for that. There aren't major reasons to do this when we are dealing with disjoint pools that are measured in the thousands. However, one purpose that it does provide is in building the framework for a much larger resolution theorem prover for more complex discoveries. This whole system essentially works as a prototype for a distributed, compute-based resolution theorem prover.
+Finally, the use of a database for a locally computed resolution theorem prover might seem a little strange, and there's good reason for that. There aren't major reasons to do this when we are dealing with disjoint pools that are measured in the thousands. However, one purpose that it does provide is in building the framework for a much larger resolution theorem prover for more complex discoveries. This whole system essentially works as a prototype for a distributed-compute-based resolution theorem prover.
 
 == Conclusions
