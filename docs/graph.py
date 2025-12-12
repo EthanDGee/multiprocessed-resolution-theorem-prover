@@ -11,6 +11,7 @@ plt.plot(df["n"], df["Multi Threaded (ms)"], marker="o", label="Multi Threaded (
 
 plt.xlabel("n")
 plt.ylabel("Time (ms)")
+plt.yscale("log", base=2)
 plt.title("Single Threaded vs Multi Threaded Performance")
 plt.legend()
 plt.grid(True)
